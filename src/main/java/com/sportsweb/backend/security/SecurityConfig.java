@@ -97,7 +97,10 @@ public class SecurityConfig {
                     auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll();
                     auth.requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll();
                     auth.requestMatchers(HttpMethod.GET, "/api/v1/public/**").permitAll();
-                    auth.requestMatchers(HttpMethod.POST, "/api/v1/auth/login", "/api/v1/auth/refresh").permitAll();
+                    // Possession of the refresh token is the credential for logout, so a client
+                    // whose access token already expired can still end its session.
+                    auth.requestMatchers(HttpMethod.POST,
+                            "/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/logout").permitAll();
                     auth.requestMatchers("/api/v1/auth/**").authenticated();
                     // Permission level checks live on the handlers (@PreAuthorize).
                     auth.requestMatchers("/api/v1/admin/**").authenticated();
