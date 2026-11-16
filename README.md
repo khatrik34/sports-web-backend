@@ -33,6 +33,11 @@ separate admin panel from one deployable.
 always-free VM with `docker compose`), all environment variables, the health check and the first-admin
 bootstrap. `render.yaml` is a ready blueprint for the first one.
 
+## Local setup on your own machine
+
+`docs/LOCAL_SETUP.md` lists what to install (JDK 21, PostgreSQL 16 server, Node 20+, Maven or IntelliJ's
+bundled one), the exact environment variables, the database creation SQL and the usual problems.
+
 ## Demo content
 
 `src/main/resources/db/demo/R__demo_data.sql (repeatable, runs after the schema)` is an opt-in Flyway seed: 4 teams, 12 players, a series
