@@ -1,0 +1,41 @@
+# Build output
+target/
+build/
+out/
+*.class
+
+# IDE / editor
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.project
+.classpath
+.settings/
+.apt_generated/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local environment and secrets
+.env
+.env.local
+*.local
+*.pem
+*.p12
+*.jks
+application-local.yml
+
+# Logs and local data
+*.log
+logs/
+data/
+pgdata/
+
+# Test / coverage output
+surefire-reports/
+failsafe-reports/
+coverage/
+*.exec
