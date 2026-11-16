@@ -27,12 +27,42 @@ jobs:
           java-version: '21'
           cache: maven
 
+      - name: Diagnostics
+        run: |
+          echo "IMAGE_OS=$(cat /etc/os-release | head -n 2 | tail -n 1)"
+          which docker || echo "docker: missing"
+          (docker info --format '{{.ServerVersion}}' 2>&1 | head -n 3) || true
+          ls -l /var/run/docker.sock 2>&1 || true
+          which psql || echo "psql: missing"
+        continue-on-error: true
+
+      - name: Start PostgreSQL
+        run: |
+          set -euo pipefail
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq postgresql
+          fi
+          sudo service postgresql start || sudo systemctl start postgresql
+          for attempt in $(seq 1 30); do
+            if sudo -u postgres pg_isready -q; then break; fi
+            sleep 2
+          done
+          sudo -u postgres psql -v ON_ERROR_STOP=1 -tc "SELECT 1 FROM pg_roles WHERE rolname='sportsweb'" | grep -q 1 \
+            || sudo -u postgres psql -v ON_ERROR_STOP=1 -c "CREATE ROLE sportsweb LOGIN PASSWORD 'sportsweb' SUPERUSER"
+          sudo -u postgres psql -v ON_ERROR_STOP=1 -tc "SELECT 1 FROM pg_database WHERE datname='sportsweb'" | grep -q 1 \
+            || sudo -u postgres psql -v ON_ERROR_STOP=1 -c "CREATE DATABASE sportsweb OWNER sportsweb"
+          PGPASSWORD=sportsweb psql -h 127.0.0.1 -U sportsweb -d sportsweb -c "select current_database(), version();"
+
       - name: Verify
         run: |
           set -o pipefail
-          mvn -B -ntp -Dstyle.color=never verify 2>&1 | tee maven-build.log
+          mvn -B -ntp -Dstyle.color=never -Dtest.database.external=true verify 2>&1 | tee maven-build.log
         env:
-          # GitHub hosted runners provide Docker, which Testcontainers needs for PostgreSQL.
+          # The suite runs against the PostgreSQL instance started above instead of Docker.
+          SPRING_DATASOURCE_URL: jdbc:postgresql://127.0.0.1:5432/sportsweb
+          SPRING_DATASOURCE_USERNAME: sportsweb
+          SPRING_DATASOURCE_PASSWORD: sportsweb
           TESTCONTAINERS_RYUK_DISABLED: 'false'
 
       - name: Annotate build failure
