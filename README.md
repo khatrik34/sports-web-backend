@@ -6,7 +6,7 @@ separate admin panel from one deployable.
 
 > **Status:** Phase 1 (foundation, authentication, RBAC, users/roles, audit trail, news
 > lifecycle, public read API, sitemaps, OpenAPI) is implemented on this branch and green in CI —
-> 41 integration tests against PostgreSQL 16. Public URLs match the shipped website
+> 53 integration tests against PostgreSQL 16. Public URLs match the shipped website
 > (`/news/{slug}`, `/news?filter=`) — see `docs/CONTRACTS.md`. `docs/PROGRESS.md` lists exactly what is
 > verified and what is still open; read it before treating anything as production-ready.
 
@@ -109,6 +109,7 @@ lockout, audit entries for failed sign-in and publishing, slug conflicts, passwo
 | --- | --- | --- |
 | Auth | `POST /api/v1/auth/login` · `POST /api/v1/auth/refresh` · `POST /api/v1/auth/logout` | anonymous (possession of the refresh token is the credential) |
 | Auth | `GET /api/v1/auth/me` | any valid access token |
+| Public · cricket | `GET /api/v1/public/teams` · `/teams/{slug}` · `/players` · `/players/{slug}` · `/tournaments` · `/tournaments/{slug}` · `/tournaments/{slug}/standings` · `/matches` · `/matches/{slug}` | anonymous, **active/hidden rules enforced** |
 | Public | `GET /api/v1/public/news` · `/news/latest` · `/news/{slug}` · `/categories` · `/sitemap` · `/news-sitemap?hours=48` | anonymous, **published only** |
 | Admin news | `GET/POST /api/v1/admin/news`, `GET/PUT /api/v1/admin/news/{id}`, `POST .../publish`, `.../unpublish`, `.../archive` | `news:read`, `news:write`, `news:publish` |
 | Admin categories | `GET/POST /api/v1/admin/news-categories`, `PUT /{id}` | `news:read`, `news:write` |

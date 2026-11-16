@@ -77,38 +77,48 @@ tables, Flyway migrations (`V<n>__<module>_*`) and its own `admin` + `public` co
 | 1.9 | OpenAPI 3 + Swagger UI with bearer scheme | `/v3/api-docs` documents all endpoints |
 | 1.10 | Docs: audit, plan, progress, README, `.env.example`, docker-compose | a new dev can start Postgres + app from the README alone |
 
-## Phase 2 — Media + SEO completion
+## Phase 2 — Cricket domain: teams, players, series, fixtures, points — SHIPPED (CI-VERIFIED)
 
-- Media library: upload to S3-compatible storage (presigned), image variants, alt text,
-  attribution; `MEDIA_MANAGE` permission; news `cover_image` becomes a media reference.
-- URL migration kit: `redirect` table (301/302/410), import of legacy WordPress/Next.js
-  paths, `sitemap.xml` + `robots.txt` generated from stored content.
-- News revisions (draft autosave history), scheduled publishing job, tags, related articles.
-- OpenAPI contract file checked into `docs/openapi/` for frontend type generation.
+Delivered on this branch (`docs/PROGRESS.md` §Phase 2 has the item-by-item evidence):
 
-**Blocked on:** only the auth-transport decision (D2) and editorial sign-off on rendering
-policy (A4). The URL inventory is now known, so the redirect/SEO work can start immediately.
+| # | Deliverable | Acceptance criteria | State |
+| --- | --- | --- | --- |
+| 2.1 | Teams + players: schema, admin CRUD, soft deactivation | deactivated rows never appear publicly; slug collisions are 409 on update, auto-suffixed on create | DONE |
+| 2.2 | Series: CRUD, participating teams, format/season/host/dates | public series exposes `teamSlugs` for `/cricket/series/{slug}?filter=teams` | DONE |
+| 2.3 | Fixtures: CRUD, state (`SCHEDULED/LIVE/COMPLETED/ABANDONED`), scores, show/hide | public list filters exactly like the site (`?filter=live|upcoming|recent|international|domestic|league`, `?team=`, `?tournament=`, `?date=`) | DONE |
+| 2.4 | Points tables: atomic replacement per series, ordered by position | duplicate teams rejected, removed rows disappear | DONE |
+| 2.5 | RBAC + audit for the whole domain | `cricket:read` / `cricket:write`; REPORTOR read-only; every mutation audited | DONE |
+| 2.6 | Honest data policy | scores are staff-entered; no external live-feed integration or claim | BY DESIGN |
 
-## Phase 3 — Sports data (admin-entered, no live feeds)
+## Phase 3 — Match detail depth, videos, media, SEO tooling — NEXT
 
-- Teams (name, slug, crest media, country), players (profile, position, team history),
-  tournaments (format, season, dates), fixtures (home/away, venue, kickoff, status),
-  match scores (per-inning for cricket where relevant), ball-by-ball commentary entries,
-  points tables (tournament standings, computed from results or entered).
-- Public read API mirrors the news pattern (published/final only, no admin fields);
-  editorial workflow for fixtures (draft → published, provisional vs final scores).
-- **Explicit non-goal:** no scraping, polling or websocket integration with any external
-  cricket data provider, no claim of real-time scores. Only what admins enter (or a future
-  explicitly-approved provider adapter) is served.
+- Scorecards: innings per fixture + batting/bowling rows (the site's `Scorecard` type), entered by staff.
+- Ball-by-ball commentary entries with over/ball, kind (`DOT`, `FOUR`, `WICKET`, …) and text,
+  served newest-first, paginated.
+- Videos: slug, title, category, duration, thumbnail, external embed URL (no hosting), publish state.
+- Media library: upload to S3-compatible storage (presigned), variants, alt text, attribution.
+- Redirect/SEO kit: `redirect` table (301/302/410) for legacy paths, robots/sitemap helpers.
+- Change-password endpoint so `mustChangePassword` can be enforced end-to-end.
+- OpenAPI snapshot checked into `docs/openapi/` for frontend type generation.
+- Rankings page (`/rankings`) data source: either computed from standings or an explicit table.
 
-## Phase 4 — Homepage, videos, operations
+**Not blocked.** Every decision that Phase 3 needed has been taken (`docs/CONTRACTS.md` §4).
+
+## Phase 4 — Homepage, admin panel, operations
 
 - Homepage configuration (ordered blocks: hero, featured news, match strip, points table,
   video rail) as versioned JSON with validation and preview, served at
   `/api/v1/public/homepage`.
-- Videos (YouTube/external embeds + metadata, no hosting), video collections.
+- Admin panel: build the UI in `sports-web-admin-panel` (currently empty) against these contracts —
+  users/roles, news, cricket, media, audit viewer.
 - Hardening: per-IP login rate limiting, JWT key rotation (`kid`), optional 2FA for
   SUPER_ADMIN, audit retention/exports, structured logs + metrics, staging/prod profiles.
+
+## Integration work outside this repository
+
+The website itself (`khatrik34/sports-web`) must swap `services/index.ts` from mocks to these APIs.
+That is a change in **another repository**, so it needs its own session; the mapping and the
+frontend-side fixes are specified in `docs/CONTRACTS.md` §2, §3a and §6.
 
 ## Facts and assumptions
 
@@ -124,8 +134,8 @@ The frontend repositories are now readable, so most earlier assumptions became f
 | F5 | Admin panel expectations | **FACT** — the repository is empty; this backend defines the contract. |
 | A4 | Editor body is a single document (HTML/Markdown/plain) with `body_format` stored | ASSUMPTION (rendering policy still to be agreed) |
 | A6 | No pre-existing staff users to migrate; first admin from `APP_BOOTSTRAP_*` | ASSUMPTION (confirm no production user list exists) |
-| D1 | Bare payloads instead of the proposed `{success,message,data,timestamp}` envelope | DECIDED by backend, reversible, awaiting confirmation |
-| D2 | Bearer tokens now; HttpOnly cookie + CSRF for the admin panel planned for Phase 2 | DECIDED by backend, needs product sign-off before the panel is built |
+| D1 | Bare payloads + RFC 9457 errors instead of a `{success,message,data,timestamp}` envelope | DECIDED (reversible at the controller layer) |
+| D2 | Bearer access token + rotating refresh token, held in memory; no cookies/CSRF | DECIDED (contained change if cookies are preferred later) |
 | D3 | Paging fields stay `page/size/totalElements/totalPages` | DECIDED (the UI's unused `page/pageSize/total` type is scaffolding) |
 
 ## Definition of done (per phase)

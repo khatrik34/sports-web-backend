@@ -26,9 +26,14 @@ Read from `app/[...slug]/page.tsx`, `app/sitemap.ts`, `app/news-sitemap.xml/rout
 | `/sitemap.xml` | `GET /api/v1/public/sitemap` (article entries) | ✅ served |
 | `/news-sitemap.xml` | `GET /api/v1/public/news-sitemap?hours=48` | ✅ served |
 | `/search?q=` | `GET /api/v1/public/news?q=` (news only) | ⏳ cross-section search needs teams/players/etc. (Phase 3) |
-| `/cricket`, `/cricket/live-scores`, `/cricket/fixtures`, `/cricket/match/{slug}`, `/cricket/series[/{slug}]`, `/rankings` | — | ⏳ Phase 3 (scores/fixtures/points) |
-| `/teams[/{slug}]`, `/players/{slug}` | — | ⏳ Phase 3 |
-| `/videos[/{slug}]` | — | ⏳ Phase 4 |
+| `/teams`, `/teams/{slug}` | `GET /api/v1/public/teams`, `/teams/{slug}` | ✅ served |
+| `/players/{slug}` | `GET /api/v1/public/players/{slug}` (+ `?team=`) | ✅ served |
+| `/cricket/fixtures`, `/cricket/live-scores` | `GET /api/v1/public/matches?filter=…` | ✅ served |
+| `/cricket/match/{slug}` | `GET /api/v1/public/matches/{slug}` | ✅ served (summary; scorecard/commentary tabs come in Phase 3) |
+| `/cricket/series`, `/cricket/series/{slug}` | `GET /api/v1/public/tournaments`, `/{slug}` | ✅ served |
+| `/cricket/series/{slug}?filter=points-table` | `GET /api/v1/public/tournaments/{slug}/standings` | ✅ served |
+| `/cricket` (hub), `/rankings`, `?filter=top-scorers|top-wickets|squads` | — | ⏳ Phase 3 |
+| `/videos[/{slug}]` | — | ⏳ Phase 3 |
 | `/about`, `/contact` | not content-managed | stays static |
 
 Notes that changed the backend:
@@ -89,16 +94,55 @@ JSON-LD: `metaTitle`→`title`, `metaDescription`→`description`, `canonicalUrl
 Both feeds only ever contain published, past-dated articles (same predicate as the rest of the
 public API), so a draft cannot leak through a sitemap.
 
-## 4. Decisions still open (need a product call)
+## 3a. Cricket payload ↔ existing UI projection
+
+The same rule applies: the UI types are view models and the adapter stays on the site. Exact mapping
+for the shapes in `types/index.ts`:
+
+**`Team`** ← `PublicTeam`: `slug`, `name`, `short`←`shortName`, `flag`, `description`. Extra:
+`category` (`"International"|"League"|"Domestic"`), `countryCode`, `logoUrl`, `path`, `url`.
+
+**`Match`** ← `PublicMatch`: `slug`, `tournament`←`tournamentName`, `format`, `category`,
+`venue`, `date`←`startTime`, **`status`←`status` (already `live|upcoming|recent`)**, `team1`/`team2`←
+`PublicTeamRef` (add `description: ''` or fetch the team page), `score1`←`team1Score`,
+`score2`←`team2Score`, `note`. Extra: `state` (stored `SCHEDULED|LIVE|COMPLETED|ABANDONED`),
+`resultText`, `matchNumber`, `path`, `url`.
+
+**`Tournament`** ← `PublicTournament`: `slug`, `name`, `short`←`shortName`, `description`,
+`dates`←`datesText`, **`teams`←`teamSlugs`** (array of slugs, exactly what the page compares against).
+Extra: `format`, `category`, `season`, `host`, `startDate`, `endDate`, `status`, `logoUrl`, `path`, `url`.
+
+**`Player`** ← `PublicPlayer`: `slug`, `name`←`name`, `country`, `role`, `batting`←`battingStyle`,
+`bowling`←`bowlingStyle`, `description`. Extra: `team` (`PublicTeamRef`), `bornOn`, `imageUrl`, `path`, `url`.
+
+**`PointsTable`** ← `PublicStandingRow`: `team`←`team.name`, `played`, `won`, `lost`, `points`,
+`nrr` (stored as display text, so `"75.00%"` and `"+1.245"` both survive). Extra: `position`, `tied`,
+`noResult`, `team.slug`.
+
+Filter vocabulary is identical to the site's own: `?filter=live|upcoming|recent` for the phase and
+`?filter=international|domestic|league` for the category on the same parameter, plus `?team=`,
+`?tournament=`, `?date=yyyy-MM-dd`, `?format=`.
+
+## 4. Decisions (taken by the backend, recorded here)
 
 | # | Question | Backend today | Recommendation |
 | --- | --- | --- | --- |
-| D1 | Response envelope `{success,message,data,timestamp}` (proposed in the audit) vs bare payloads + RFC 9457 errors | bare payloads; errors are `application/problem+json` with a stable `code` | **Keep bare payloads.** Errors already carry everything an envelope would, `problem+json` is a standard, and OpenAPI stays simpler. If you prefer the envelope, it is a mechanical wrap in the controllers — say so and I will do it before Phase 2 freezes contracts. |
-| D2 | Auth transport: HttpOnly cookies + CSRF (proposed in the audit) vs `Authorization: Bearer` | Bearer only, no cookies, CSRF disabled | **Cookies for the admin panel are the safer end state** (XSS cannot exfiltrate the refresh token). This needs: same-site deployment decision, `SameSite`/`Secure` values, CSRF token endpoint, and refresh-on-cookie endpoints. Worth doing in Phase 2 *before* the admin panel is built — the admin repo is empty, so nothing depends on either choice yet. |
-| D3 | Pagination field names | `page`, `size`, `totalElements`, `totalPages`, `first`, `last` | Keep; the UI's unused `PaginatedResponse` (`data/page/pageSize/total`) is scaffolding and would need remapping either way. |
-| D4 | `readTime` computed server-side vs client-side | server-side | Keep server-side so every client agrees. |
+| D1 | Response envelope `{success,message,data,timestamp}` vs bare payloads + RFC 9457 errors | **DECIDED: bare payloads.** Errors are `application/problem+json` with a stable `code`. | Errors carry everything an envelope would, the format is standard, and OpenAPI stays simple. Reversible with a controller-level wrap if you ever want the envelope. |
+| D2 | Auth transport: HttpOnly cookies + CSRF vs `Authorization: Bearer` | **DECIDED: Bearer access token (15 min) + rotating refresh token, both held in memory by the admin panel; refresh tokens hashed at rest and revocable.** | No cookies means no CSRF surface and no cross-site cookie problems, and the panel is built by us so it never writes tokens to `localStorage`. Cost: XSS could read a token — mitigated by CSP + never rendering raw HTML from the API. If you later host the panel on a different origin and prefer cookies, that is a contained change to `AuthController` + `SecurityConfig`. |
+| D3 | Pagination field names | **DECIDED:** `page`, `size`, `totalElements`, `totalPages`, `first`, `last` | The UI's unused `PaginatedResponse` (`data/page/pageSize/total`) is scaffolding and needs remapping either way. |
+| D4 | `readTime` computed server-side vs client-side | **DECIDED: server-side** | Every client agrees, and the value is also needed for sitemaps. |
 
-## 5. What the website still has to do (its side of the contract)
+## 5. Public / admin endpoint summary (Phase 1–2)
+
+| Area | Public (anonymous) | Admin (`cricket:read` / `cricket:write`) |
+| --- | --- | --- |
+| News | `GET /public/news`, `/news/{slug}`, `/news/latest`, `/categories`, `/sitemap`, `/news-sitemap` | `GET/POST/PUT /admin/news`, `/publish`, `/unpublish`, `/archive`; `/admin/news-categories` |
+| Teams | `GET /public/teams`, `/teams/{slug}` | `GET/POST/PUT /admin/teams`, `/{id}/activate`, `/{id}/deactivate`, `DELETE /{id}` |
+| Players | `GET /public/players`, `/players/{slug}` | `GET/POST/PUT /admin/players`, `/{id}/activate`, `/{id}/deactivate` |
+| Series | `GET /public/tournaments`, `/{slug}`, `/{slug}/standings` | `GET/POST/PUT /admin/tournaments`, `/{id}/standings` (PUT = full replace) |
+| Fixtures | `GET /public/matches`, `/matches/{slug}` | `GET/POST/PUT /admin/matches`, `/{id}/show`, `/{id}/hide`, `DELETE /{id}` |
+
+## 6. What the website still has to do (its side of the contract)
 
 - Replace mock imports behind `services/index.ts` with server-side fetchers; keep mocks only behind
   an explicit flag and **never** fall back to mocks on API errors (silently serving fiction is worse
@@ -108,3 +152,5 @@ public API), so a draft cannot leak through a sitemap.
 - Fix the audit's own findings before switching data source: `app/page.tsx` indexes `articles[0]`/
   `articles[4]` without guards, `/news/trending|latest|featured` share one list, and search preloads
   every collection.
+- The match page's `Summary` tab currently hard-codes one slug (`featured`); with real data it must
+  call `/public/matches/{slug}` for every fixture.

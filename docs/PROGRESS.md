@@ -78,7 +78,24 @@ Suite size at last green run: **41 tests, 0 failures** (9 auth · 9 public news 
 | Permission authorities in the JWT | Endpoint checks stay server-side; the UI cannot grant itself rights. |
 | `PUT /admin/news/{id}` is a full replace | Predictable; avoids "null means unchanged" ambiguity. Slug never changes implicitly. |
 
-## Phase 2 — Media, SEO completion, revisions — OPEN
+## Phase 2 — Cricket domain (teams, players, series, fixtures, points) — CI-VERIFIED
+
+| id | Item | Status | Evidence / limitation |
+| --- | --- | --- | --- |
+| 2.1 | Schema: `cricket_team`, `cricket_player`, `cricket_tournament`, `cricket_tournament_team`, `cricket_match`, `cricket_standing` | CI-VERIFIED | Migration `V3`; entity↔column parity also checked statically before push |
+| 2.2 | `cricket:read` / `cricket:write` permissions, new audit actions | CI-VERIFIED | `V4` grants SUPER_ADMIN + EDITOR write, REPORTER and AUDITOR read; `CricketApiTest` proves a REPORTER gets 403 on write |
+| 2.3 | Admin teams & players: list/filter, create (slug derived), update, activate/deactivate | CI-VERIFIED | Deletes are deactivations because fixtures reference teams |
+| 2.4 | Admin series: CRUD, team assignment, **atomic points-table replacement** | CI-VERIFIED | Duplicate teams in one table → `400 duplicate_team`; replacing drops removed rows |
+| 2.5 | Admin fixtures: CRUD, show/hide, audited delete, score text, state | CI-VERIFIED | Hidden fixtures are invisible to the public API but still visible to admins |
+| 2.6 | Public API: `/public/teams`, `/players`, `/tournaments`, `/tournaments/{slug}/standings`, `/matches`, `/matches/{slug}` | CI-VERIFIED | `?filter=live|upcoming|recent` and `?filter=international|domestic|league` both work, exactly like the site's own filter bar |
+| 2.7 | OpenAPI includes the new contract | CI-VERIFIED | `OpenApiContractTest` asserts the cricket paths |
+| 2.8 | Honesty constraint: no external live-score feed | BY DESIGN | Scores are typed in by staff; nothing in code or docs claims real-time integration |
+
+Suite size at last green run: **53 tests, 0 failures** (9 auth · 12 cricket · 9 public news ·
+7 news admin · 6 RBAC · 5 password policy · 3 audit · 2 OpenAPI), GitHub Actions on commit
+`197387e`.
+
+## Phase 3 — Scorecards, commentary, videos, media, SEO tooling — OPEN
 
 No longer blocked by missing URL facts: the URL inventory is verified and the admin panel has no
 contract of its own to preserve. Waiting only on decisions D1/D2. Work that can start immediately:
@@ -103,8 +120,9 @@ audit retention/export, media storage, homepage blocks, videos.
    `docs/CONTRACTS.md`). Findings: article URL is `/news/{slug}`, categories have no URL
    (`/news?filter=`), the news sitemap uses a 48h window, and the **admin panel repository is
    empty** — so this backend defines that contract.
-   Remaining decisions needed from you: **D1** (response envelope vs bare payloads) and **D2**
-   (Bearer tokens now vs HttpOnly cookie + CSRF for the admin panel).
+   D1 (bare payloads + RFC 9457) and D2 (Bearer tokens held in memory, no cookies) were decided by
+   the backend and are recorded with their trade-offs in `docs/CONTRACTS.md` §4 — say the word if
+   you want either reversed.
 2. **Sandbox cannot build or run Java.** JDK/Maven/Docker/PostgreSQL absent and Maven Central
    blocked, so verification relies on CI (green) and static validators
    (`java-parser` 101 files, `pglast` 2 migrations, YAML/XML parse, entity↔column and
@@ -116,10 +134,11 @@ audit retention/export, media storage, homepage blocks, videos.
 
 ## Next actions (in order)
 
-1. Decide D1/D2 (envelope, auth transport) → then freeze v1 contracts with a checked-in
-   OpenAPI snapshot before the admin panel is built against them.
-2. Phase 2 media library and redirect/SEO tooling; add change-password endpoint; wire the
-   website's adapters in `services/index.ts` (its side of the contract, `docs/CONTRACTS.md` §5).
+1. Phase 3: scorecards (innings + batting/bowling rows), ball-by-ball commentary, videos,
+   then media library, redirects/SEO tooling, change-password, and a checked-in OpenAPI snapshot.
+2. Admin panel UI scaffolded against these contracts (the `sports-web-admin-panel` repo is empty).
+3. Frontend integration: the website's `services/index.ts` adapters — **this needs a session on the
+   `sports-web` repository**; this session can only change `sports-web-backend`.
 3. Phase 3 sports data model (teams/players/tournaments/fixtures/scores/commentary/points).
 4. Harden: per-IP throttling, refresh-token family table cleanup job tuning, JWT `kid`
    rotation, 2FA for super admins, dependency scanning in CI.
