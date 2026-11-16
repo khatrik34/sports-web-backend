@@ -97,6 +97,22 @@ jobs:
             printf '::error::%s\n' "${line//$'\r'/}"
           done
 
+      - name: Build summary
+        if: always()
+        shell: bash
+        run: |
+          shopt -s nullglob
+          reports=(target/surefire-reports/*.txt)
+          if [ ${#reports[@]} -eq 0 ]; then
+            echo "::notice::No surefire reports were produced (build failed before tests)."
+            exit 0
+          fi
+          for report in "${reports[@]}"; do
+            grep -H "Tests run:" "$report" | head -n 1
+          done | sed 's#target/surefire-reports/##' | while IFS= read -r line; do
+            echo "::notice::${line}"
+          done
+
       - name: Upload build log
         if: always()
         uses: actions/upload-artifact@v4
