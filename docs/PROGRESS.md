@@ -95,7 +95,24 @@ Suite size at last green run: **53 tests, 0 failures** (9 auth · 12 cricket · 
 7 news admin · 6 RBAC · 5 password policy · 3 audit · 2 OpenAPI), GitHub Actions on commit
 `197387e`.
 
-## Phase 3 — Scorecards, commentary, videos, media, SEO tooling — OPEN
+## Phase 3 — Match depth, videos, media, SEO tooling, homepage — CI-VERIFIED
+
+| id | Item | Status | Evidence / limitation |
+| --- | --- | --- | --- |
+| 3.1 | Self-service change password (`POST /auth/password`) | CI-VERIFIED | Requires the current password, enforces policy, rejects reuse, revokes every refresh token, clears `mustChangePassword`. **Not enforced** as a request gate — recorded as a limitation. |
+| 3.2 | Scorecards (innings + batting/bowling) with atomic replacement | CI-VERIFIED | `PUT /admin/matches/{id}/scorecard`; batting team must belong to the fixture; economy computed from overs text |
+| 3.3 | Ball-by-ball commentary | CI-VERIFIED | Append + delete, newest first, paged; hidden fixtures hide their commentary |
+| 3.4 | Videos | CI-VERIFIED | Admin CRUD + show/hide + delete; public only when visible **and** `publishedAt` has passed |
+| 3.5 | Rankings | CI-VERIFIED | `/public/rankings` reuses the points table; picks the ongoing series for the format, else the latest |
+| 3.6 | SEO redirects | CI-VERIFIED | 301/302/307/308/410, path normalisation, duplicates rejected, public resolver 404s when disabled |
+| 3.7 | Homepage configuration | CI-VERIFIED | Ordered typed blocks with JSON config, replaced atomically, duplicate keys rejected, disabled blocks public-hidden |
+| 3.8 | Media metadata | CI-VERIFIED (metadata only) | Register/update/delete assets by URL + alt text/caption/credit. **No binary upload or resizing** — deliberate, documented |
+| 3.9 | OpenAPI snapshot | CI-VERIFIED | A test writes `target/openapi.json`; CI uploads it as the `openapi-snapshot` artifact (not committed to git) |
+| 3.10 | Honesty constraint | BY DESIGN | Scores, commentary and fixtures are staff-entered; no external feed and no real-time claim |
+
+Suite size at last green run: **71 tests, 0 failures** (12 cricket · 11 videos/match detail ·
+9 auth · 9 public news · 7 news admin · 6 SEO/homepage/media · 6 RBAC · 5 password policy ·
+3 audit · 3 OpenAPI).
 
 No longer blocked by missing URL facts: the URL inventory is verified and the admin panel has no
 contract of its own to preserve. Waiting only on decisions D1/D2. Work that can start immediately:
