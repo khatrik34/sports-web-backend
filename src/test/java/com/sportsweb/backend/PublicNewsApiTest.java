@@ -7,8 +7,8 @@ import org.springframework.http.HttpHeaders;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -57,10 +57,10 @@ class PublicNewsApiTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.authorUser").doesNotExist());
 
         JsonNode detail = getJson("/api/v1/public/news/" + articleSlug, null);
-        Map<String, Object> present = new LinkedHashMap<>();
-        detail.fieldNames().forEachRemaining(present::put);
-        assertThat(present).containsKeys("slug", "title", "body", "seo", "path", "url");
-        assertThat(present).doesNotContainKeys("id", "status", "version", "archivedAt");
+        List<String> fieldNames = new ArrayList<>();
+        detail.fieldNames().forEachRemaining(fieldNames::add);
+        assertThat(fieldNames).contains("slug", "title", "body", "seo", "path", "url");
+        assertThat(fieldNames).doesNotContain("id", "status", "version", "archivedAt");
     }
 
     @Test

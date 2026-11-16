@@ -42,7 +42,7 @@ jobs:
           # Surfaces the most useful lines of a failed build as check-run annotations.
           log=maven-build.log
           [ -f "$log" ] || exit 0
-          mapfile -t lines < <(grep -E "error:|ERROR|symbol:|location:|Caused by|Tests run:.*Fail|BUILD FAILURE" "$log" | tail -n 10)
+          mapfile -t lines < <(grep -E "\.java:\[|error:|symbol:|location:|Caused by|Tests run:.*Fail|BUILD FAILURE|ERROR\] Failed to execute" "$log" | head -n 15 | cut -c1-220)
           if [ ${#lines[@]} -eq 0 ]; then
             mapfile -t lines < <(tail -n 10 "$log")
           fi
