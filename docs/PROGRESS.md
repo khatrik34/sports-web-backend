@@ -24,11 +24,12 @@ Legend
 | 1.6 | Append-only audit trail + admin audit query | CI-VERIFIED | `AuditTrailApiTest` (3 tests) |
 | 1.7 | News lifecycle draft → publish/schedule → unpublish → archive | CI-VERIFIED | `NewsAdminApiTest` (7 tests) |
 | 1.8 | Public v1 API (news, latest, categories, sitemap) with draft protection | CI-VERIFIED | `PublicNewsApiTest` (6 tests) |
-| 1.9 | OpenAPI 3 + Swagger UI with bearer scheme | WRITTEN | Document served by springdoc; not yet snapshot-checked in CI |
+| 1.9 | OpenAPI 3 + Swagger UI with bearer scheme | CI-VERIFIED | `OpenApiContractTest` asserts documented paths, `bearerAuth` scheme and Swagger UI |
 | 1.10 | README, `.env.example`, docker-compose, Dockerfile, CI | CI-VERIFIED (CI) / WRITTEN (docker image not built here) | Docker build is not part of CI yet |
 
-Suite size at last green run: **36 tests, 0 failures** (9 auth · 7 news admin · 6 RBAC ·
-6 public news · 3 audit · 5 password policy).
+Suite size at last green run: **38 tests, 0 failures** (9 auth · 7 news admin · 6 RBAC ·
+6 public news · 3 audit · 5 password policy · 2 OpenAPI), GitHub Actions run `43859779216`
+on commit `10045c8`.
 
 ### What CI actually proves
 
@@ -54,7 +55,8 @@ Suite size at last green run: **36 tests, 0 failures** (9 auth · 7 news admin �
 
 - No manual smoke test of a running instance from this sandbox (cannot run the JAR here).
 - Docker image build / compose stack not executed here.
-- OpenAPI document not compared against a committed contract snapshot.
+- OpenAPI document is generated and its paths are asserted, but it is **not yet frozen as a
+  committed contract snapshot** (planned once the frontend's expectations are known).
 - No load, concurrency or penetration testing; no dependency vulnerability scan.
 - The `mustChangePassword` flag is returned to clients but **does not yet block** admin
   endpoints (deliberate: blocking needs a change-password endpoint first — planned Phase 2).

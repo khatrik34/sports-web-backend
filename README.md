@@ -5,9 +5,9 @@ PostgreSQL 16 · Flyway · JWT · OpenAPI) serving **both** the public sports we
 separate admin panel from one deployable.
 
 > **Status:** Phase 1 (foundation, authentication, RBAC, users/roles, audit trail, news
-> lifecycle, public read API) is implemented on this branch.
-> `docs/PROGRESS.md` states exactly what is verified and what is not — read it before
-> treating anything as production-ready.
+> lifecycle, public read API, OpenAPI) is implemented on this branch and green in CI —
+> 38 integration tests against PostgreSQL 16. `docs/PROGRESS.md` lists exactly what is
+> verified and what is still open; read it before treating anything as production-ready.
 
 ## Documentation
 
@@ -82,9 +82,20 @@ OpenAPI JSON: `http://localhost:8080/v3/api-docs` · Swagger UI: `http://localho
 mvn -B verify
 ```
 
-Integration tests boot the real application against a **PostgreSQL 16** container
-(Flyway migrations + Hibernate schema validation + SQL behaviour), and drive the actual
-HTTP/security stack through MockMvc. Docker must be running.
+Integration tests boot the real application against **PostgreSQL 16** (Flyway migrations +
+Hibernate schema validation + SQL behaviour), and drive the actual HTTP/security stack
+through MockMvc. Docker must be running because the database is a Testcontainers container.
+
+No Docker? Point the suite at an existing PostgreSQL instead:
+
+```bash
+mvn -B verify -Dtest.database.external=true \
+  -Dspring.datasource.url=jdbc:postgresql://localhost:5432/sportsweb \
+  -Dspring.datasource.username=sportsweb -Dspring.datasource.password=sportsweb
+```
+
+CI uses exactly this mode (GitHub runners here have no working Docker) with an
+apt-installed PostgreSQL 16.
 
 Covered explicitly: draft/archived/scheduled articles never reach the public API, missing
 permission → 403, missing token → 401, refresh-token rotation and reuse detection, account
