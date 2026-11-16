@@ -1,0 +1,34 @@
+# Test-only configuration. The JWT secret below is a throwaway value used exclusively by
+# the automated test suite; it is NOT a production secret and must never be reused.
+app:
+  security:
+    jwt:
+      secret: dGVzdC1vbmx5LWp3dC1zaWduaW5nLWtleS0wMTIzNDU2Nzg5YWJjZGVm
+      issuer: sports-web-backend-test
+      access-token-ttl: PT15M
+      refresh-token-ttl: P14D
+    docs:
+      public-access: true
+    password:
+      # Deliberately weak cost: test-only, keeps the suite fast. Never use 4 in production.
+      bcrypt-strength: 4
+    login:
+      max-failed-attempts: 5
+      lockout-duration: PT15M
+  public-site:
+    base-url: https://www.example.test
+    article-path-template: /{categorySlug}/{slug}
+  bootstrap:
+    enabled: true
+    admin-email: admin@test.local
+    admin-password: TestAdminPassw0rd!2026
+    admin-display-name: Test Admin
+
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+logging:
+  level:
+    com.sportsweb.backend: DEBUG
