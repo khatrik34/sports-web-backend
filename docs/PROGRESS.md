@@ -26,10 +26,11 @@ Legend
 | 1.8 | Public v1 API (news, latest, categories, sitemap) with draft protection | CI-VERIFIED | `PublicNewsApiTest` (6 tests) |
 | 1.9 | OpenAPI 3 + Swagger UI with bearer scheme | CI-VERIFIED | `OpenApiContractTest` asserts documented paths, `bearerAuth` scheme and Swagger UI |
 | 1.10 | README, `.env.example`, docker-compose, Dockerfile, CI | CI-VERIFIED (CI) / WRITTEN (docker image not built here) | Docker build is not part of CI yet |
+| 1.11 | Public URLs aligned to the shipped website (`/news/{slug}`, `/news?filter=`, `readTime`) | CI-VERIFIED | Re-audit of `sports-web@cc56fe1`; `PublicNewsApiTest` asserts canonical path and category filter URL |
+| 1.12 | Sitemap + Google News sitemap feeds (published only, bounded window) | CI-VERIFIED | `PublicNewsApiTest`: `/public/sitemap`, `/public/news-sitemap?hours=` |
 
-Suite size at last green run: **38 tests, 0 failures** (9 auth · 7 news admin · 6 RBAC ·
-6 public news · 3 audit · 5 password policy · 2 OpenAPI), GitHub Actions run `43859779216`
-on commit `10045c8`.
+Suite size at last green run: **41 tests, 0 failures** (9 auth · 9 public news · 7 news admin ·
+6 RBAC · 5 password policy · 3 audit · 2 OpenAPI), GitHub Actions on commit `de4aed7`.
 
 ### What CI actually proves
 
@@ -47,6 +48,9 @@ on commit `10045c8`.
   admin-only fields (`id`, `status`, `version`, ...).
 - Publishing without a summary is rejected (`400 not_publishable`); duplicate slugs conflict
   (`409 slug_taken`); archived articles cannot be republished (`409 invalid_transition`).
+- Public payloads use the website's real URL shape: `path`/`seo.canonicalUrl` are `/news/{slug}`,
+  a category's `path` is `/news?filter=<slug>`, the sitemap lists `/news/{slug}` entries, and the
+  news sitemap only contains articles published inside the requested 1–168h window.
 - Failed sign-ins and publishes produce audit rows with actor, IP/user-agent and a compact
   before/after snapshot; no password material is stored.
 - Password policy rejects short/weak passwords; staff creation returns no password hash.
@@ -76,8 +80,8 @@ on commit `10045c8`.
 
 ## Phase 2 — Media, SEO completion, revisions — OPEN
 
-Blocked partly: needs the real public URL inventory and the admin panel's contract
-(`docs/PLAN.md` §Phase 2, `docs/AUDIT.md` §4). Work that can start immediately:
+No longer blocked by missing URL facts: the URL inventory is verified and the admin panel has no
+contract of its own to preserve. Waiting only on decisions D1/D2. Work that can start immediately:
 - `redirect` table + 301/410 handling and a real `sitemap.xml` renderer.
 - Change-password endpoint (unblocks enforcing `mustChangePassword`).
 - Optional: contract snapshot of `/v3/api-docs` as a CI check.
@@ -94,13 +98,13 @@ audit retention/export, media storage, homepage blocks, videos.
 
 ## Blockers
 
-1. **No access to the frontend repositories or the audit document.**
-   `khatrik34/sports-web`, `khatrik34/sports-web-admin-panel` and PR #2 return `404/403` to
-   this GitHub identity (probe results in `docs/AUDIT.md` §2–§4). Consequences:
-   article URL shape, category names, existing response contracts and the admin panel's
-   auth expectations are **assumptions** (A1–A6 in `docs/PLAN.md`), all configurable.
-   Unblock by granting read access, or pasting PR #2 / a `sitemap.xml` sample / the existing
-   API client code.
+1. ~~No access to the frontend repositories or the audit document.~~ **RESOLVED** — both
+   repositories were made public on 2026-11-16 and were re-audited (`docs/AUDIT.md` §2–§4,
+   `docs/CONTRACTS.md`). Findings: article URL is `/news/{slug}`, categories have no URL
+   (`/news?filter=`), the news sitemap uses a 48h window, and the **admin panel repository is
+   empty** — so this backend defines that contract.
+   Remaining decisions needed from you: **D1** (response envelope vs bare payloads) and **D2**
+   (Bearer tokens now vs HttpOnly cookie + CSRF for the admin panel).
 2. **Sandbox cannot build or run Java.** JDK/Maven/Docker/PostgreSQL absent and Maven Central
    blocked, so verification relies on CI (green) and static validators
    (`java-parser` 101 files, `pglast` 2 migrations, YAML/XML parse, entity↔column and
@@ -112,9 +116,10 @@ audit retention/export, media storage, homepage blocks, videos.
 
 ## Next actions (in order)
 
-1. Obtain frontend access (blocker 1) → confirm A1/A2 (article path + canonical base) and
-   freeze the v1 contracts with a checked-in OpenAPI snapshot.
-2. Phase 2 media library and redirect/SEO tooling; add change-password endpoint.
+1. Decide D1/D2 (envelope, auth transport) → then freeze v1 contracts with a checked-in
+   OpenAPI snapshot before the admin panel is built against them.
+2. Phase 2 media library and redirect/SEO tooling; add change-password endpoint; wire the
+   website's adapters in `services/index.ts` (its side of the contract, `docs/CONTRACTS.md` §5).
 3. Phase 3 sports data model (teams/players/tournaments/fixtures/scores/commentary/points).
 4. Harden: per-IP throttling, refresh-token family table cleanup job tuning, JWT `kid`
    rotation, 2FA for super admins, dependency scanning in CI.

@@ -28,13 +28,18 @@ tables, Flyway migrations (`V<n>__<module>_*`) and its own `admin` + `public` co
 
 - Base path: `/api/v{version}`; Phase 1 serves `v1` only. Version is in the path, never in
   a header, so a v2 can coexist.
+- Public URLs follow the shipped website exactly (`docs/CONTRACTS.md` §1): articles are
+  `/news/{slug}`, categories are `/news?filter=<value>`, sitemaps come from the API but the
+  static section paths stay owned by the site.
 - Audience split:
   - `/api/v1/public/**` — anonymous, GET only, **published content only**.
   - `/api/v1/auth/**` — login/refresh/logout/me.
   - `/api/v1/admin/**` — JWT required **plus** a permission authority per endpoint.
 - JSON is camelCase, timestamps are ISO-8601 UTC (`2026-11-16T09:30:00Z`).
 - Collections are paged: `{ content: [...], page, size, totalElements, totalPages, first, last }`.
-  `page` is 0-based, `size` caps at 100.
+  `page` is 0-based, `size` caps at 100. Payloads are returned bare (no
+  `{success,message,data}` envelope); errors are RFC 9457. Rationale and the reversal cost are
+  in `docs/CONTRACTS.md` §4 (decision D1).
 - Errors are RFC 9457 `application/problem+json` with `type`, `title`, `status`, `detail`,
   `instance`, and `errors[]` for field validation failures. No stack traces, no SQL,
   no internal identifiers in messages.
@@ -81,7 +86,8 @@ tables, Flyway migrations (`V<n>__<module>_*`) and its own `admin` + `public` co
 - News revisions (draft autosave history), scheduled publishing job, tags, related articles.
 - OpenAPI contract file checked into `docs/openapi/` for frontend type generation.
 
-**Blocked on:** frontend URL inventory + admin panel contracts (see `docs/AUDIT.md` §4).
+**Blocked on:** only the auth-transport decision (D2) and editorial sign-off on rendering
+policy (A4). The URL inventory is now known, so the redirect/SEO work can start immediately.
 
 ## Phase 3 — Sports data (admin-entered, no live feeds)
 
@@ -104,16 +110,23 @@ tables, Flyway migrations (`V<n>__<module>_*`) and its own `admin` + `public` co
 - Hardening: per-IP login rate limiting, JWT key rotation (`kid`), optional 2FA for
   SUPER_ADMIN, audit retention/exports, structured logs + metrics, staging/prod profiles.
 
-## Assumptions to confirm (all configurable, all reversible)
+## Facts and assumptions
 
-| id | Assumption | Where |
+The frontend repositories are now readable, so most earlier assumptions became facts
+(`docs/AUDIT.md` §2–§4, `docs/CONTRACTS.md`).
+
+| id | Item | State |
 | --- | --- | --- |
-| A1 | Article URL shape is `/{categorySlug}/{slug}` (fallback `/{slug}` when no category) | `app.public-site.article-path-template` |
-| A2 | Public site origin is configured via `APP_PUBLIC_SITE_BASE_URL` and used for absolute `url`/canonical in public payloads and the sitemap feed | `app.public-site.base-url` |
-| A3 | The admin panel can send `Authorization: Bearer` and store tokens itself | auth contract |
-| A4 | Body content is HTML produced by an editor; a `body_format` column exists so Markdown can be added without migration | `news_article.body_format` |
-| A5 | Category slugs are editorial and stable; category rename does not rewrite article paths | `news_category` |
-| A6 | No pre-existing users exist to migrate; the first admin comes from `APP_BOOTSTRAP_*` | `AdminBootstrapRunner` |
+| F1 | Article URL shape | **FACT** — `/news/{slug}` from `app/sitemap.ts`, canonical metadata and JSON-LD. Backend default updated; `app.public-site.article-path-template` still configurable. |
+| F2 | Canonical/site origin | **FACT** — the site resolves metadata against `NEXT_PUBLIC_SITE_URL`; backend uses `APP_PUBLIC_SITE_BASE_URL`. Same origin must be configured in both. |
+| F3 | Category URLs | **FACT** — none exist; the listing filters with `/news?filter=<value>`. No category path is emitted. |
+| F4 | Sitemap + news sitemap fields | **FACT** — read from `app/sitemap.ts` and `app/news-sitemap.xml/route.ts`; served by `/public/sitemap` and `/public/news-sitemap` (`docs/CONTRACTS.md` §3). |
+| F5 | Admin panel expectations | **FACT** — the repository is empty; this backend defines the contract. |
+| A4 | Editor body is a single document (HTML/Markdown/plain) with `body_format` stored | ASSUMPTION (rendering policy still to be agreed) |
+| A6 | No pre-existing staff users to migrate; first admin from `APP_BOOTSTRAP_*` | ASSUMPTION (confirm no production user list exists) |
+| D1 | Bare payloads instead of the proposed `{success,message,data,timestamp}` envelope | DECIDED by backend, reversible, awaiting confirmation |
+| D2 | Bearer tokens now; HttpOnly cookie + CSRF for the admin panel planned for Phase 2 | DECIDED by backend, needs product sign-off before the panel is built |
+| D3 | Paging fields stay `page/size/totalElements/totalPages` | DECIDED (the UI's unused `page/pageSize/total` type is scaffolding) |
 
 ## Definition of done (per phase)
 

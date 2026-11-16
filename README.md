@@ -5,8 +5,9 @@ PostgreSQL 16 · Flyway · JWT · OpenAPI) serving **both** the public sports we
 separate admin panel from one deployable.
 
 > **Status:** Phase 1 (foundation, authentication, RBAC, users/roles, audit trail, news
-> lifecycle, public read API, OpenAPI) is implemented on this branch and green in CI —
-> 38 integration tests against PostgreSQL 16. `docs/PROGRESS.md` lists exactly what is
+> lifecycle, public read API, sitemaps, OpenAPI) is implemented on this branch and green in CI —
+> 41 integration tests against PostgreSQL 16. Public URLs match the shipped website
+> (`/news/{slug}`, `/news?filter=`) — see `docs/CONTRACTS.md`. `docs/PROGRESS.md` lists exactly what is
 > verified and what is still open; read it before treating anything as production-ready.
 
 ## Documentation
@@ -15,6 +16,7 @@ separate admin panel from one deployable.
 | --- | --- |
 | [`docs/AUDIT.md`](docs/AUDIT.md) | State of this repo and what could/could not be inspected; sandbox limitations |
 | [`docs/PLAN.md`](docs/PLAN.md) | Architecture, API conventions, security model, phase plan, assumptions |
+| [`docs/CONTRACTS.md`](docs/CONTRACTS.md) | Verified URLs of the live site, DTO↔UI mapping, sitemap feeds, open decisions |
 | [`docs/PROGRESS.md`](docs/PROGRESS.md) | Per-item status, verification results, blockers, next steps |
 
 ## Requirements
@@ -107,7 +109,7 @@ lockout, audit entries for failed sign-in and publishing, slug conflicts, passwo
 | --- | --- | --- |
 | Auth | `POST /api/v1/auth/login` · `POST /api/v1/auth/refresh` · `POST /api/v1/auth/logout` | anonymous (possession of the refresh token is the credential) |
 | Auth | `GET /api/v1/auth/me` | any valid access token |
-| Public | `GET /api/v1/public/news` · `/news/latest` · `/news/{slug}` · `/categories` · `/sitemap` | anonymous, **published only** |
+| Public | `GET /api/v1/public/news` · `/news/latest` · `/news/{slug}` · `/categories` · `/sitemap` · `/news-sitemap?hours=48` | anonymous, **published only** |
 | Admin news | `GET/POST /api/v1/admin/news`, `GET/PUT /api/v1/admin/news/{id}`, `POST .../publish`, `.../unpublish`, `.../archive` | `news:read`, `news:write`, `news:publish` |
 | Admin categories | `GET/POST /api/v1/admin/news-categories`, `PUT /{id}` | `news:read`, `news:write` |
 | Admin users | `GET/POST /api/v1/admin/users`, `GET/PATCH /{id}`, `PUT /{id}/roles`, `POST /{id}/password`, `POST /{id}/unlock` | `users:read`, `users:manage` |
@@ -131,7 +133,8 @@ only where a default is safe.
 | `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | yes in practice | PostgreSQL connection |
 | `APP_CORS_ALLOWED_ORIGINS` | yes | Website + admin panel origins, comma separated |
 | `APP_PUBLIC_SITE_BASE_URL` | yes | Absolute base for `url`/canonical/sitemap in public payloads |
-| `APP_ARTICLE_PATH_TEMPLATE` | no | Default `/{categorySlug}/{slug}`; must match the real website URLs |
+| `APP_ARTICLE_PATH_TEMPLATE` | no | Default `/news/{slug}` (verified against the live site) |
+| `APP_PUBLIC_SITE_LANGUAGE` | no | Default `en`; used by the news sitemap feed |
 | `APP_ACCESS_TOKEN_TTL` / `APP_REFRESH_TOKEN_TTL` | no | Defaults `PT15M` / `P14D` |
 | `APP_LOGIN_MAX_FAILED_ATTEMPTS` / `APP_LOGIN_LOCKOUT_DURATION` | no | Defaults `5` / `PT15M` |
 | `APP_BOOTSTRAP_*` | no | One-off first administrator creation |
