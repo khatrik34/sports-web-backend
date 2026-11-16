@@ -32,7 +32,7 @@ must not hardcode the host in client code (`API_BASE_URL` env, server-side only)
 | `/rankings` | `GET /api/v1/public/rankings?format=TEST` (omit `format` for the current series) |
 | `/videos` (+ `?filter=`) | `GET /api/v1/public/videos?filter={category}&size=12` |
 | `/videos/{slug}` | `GET /api/v1/public/videos/{slug}` |
-| `/search?q=` | `GET /public/news?q={q}` for news; teams/players/matches each support `?q=` (or `?team=`) — merge results client-side (there is no cross-section search endpoint) |
+| `/search?q=` | `GET /api/v1/public/search?q={q}&limit=5` — one call; each hit is `{ type, title, subtitle, path, url }` and `type` is `news`, `match`, `series`, `team`, `player` or `video` |
 | `sitemap.xml` | keep the static section paths, append `GET /public/sitemap` and each `/public/videos?size=100` entry |
 | `news-sitemap.xml` | `GET /api/v1/public/news-sitemap?hours=48` |
 | 404 handler | `GET /api/v1/public/redirects?path={requestedPath}` → 301/302/307/308 redirect to `toPath`, or 410 when retired; 404 = genuinely gone |
@@ -70,6 +70,7 @@ New since the first brief:
 
 ## Known gaps (do not invent)
 
-- No cross-section search endpoint; no live-score feed (scores are staff-entered).
+- No live-score feed (scores are staff-entered); nothing here is real-time.
+- Sign-in throttling answers `429 too_many_attempts` — surface it as "try again shortly".
 - Media is metadata only (no binary upload, no image resizing service).
 - `mustChangePassword` is exposed on the user payload but the API does not block requests while true.

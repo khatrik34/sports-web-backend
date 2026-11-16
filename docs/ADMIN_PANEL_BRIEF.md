@@ -46,8 +46,8 @@ RFC 9457 `application/problem+json` with a stable `code`:
 Branch on `code`: `not_found`, `invalid_slug`, `slug_taken`, `invalid_reference`,
 `invalid_transition`, `not_publishable`, `duplicate_team`, `duplicate_section`, `invalid_filter`,
 `invalid_date`, `invalid_status`, `invalid_path`, `redirect_exists`, `invalid_config`, `invalid_url`,
-`weak_password`, `current_password_incorrect`, `password_reused`, `forbidden`, `unauthorized`,
-`validation_failed`.
+`weak_password`, `current_password_incorrect`, `password_reused`, `too_many_attempts`,
+`password_change_required`, `forbidden`, `unauthorized`, `validation_failed`.
 
 ## Paging
 
@@ -82,12 +82,20 @@ Homepage body: `{ sections: [{ key, type, title, sortOrder, enabled, config }] }
 `HERO | HEADLINE_LIST | MATCH_STRIP | POINTS_TABLE | VIDEO_RAIL | CUSTOM` and `config` is JSON
 (e.g. `{"articleSlugs":["a","b"],"limit":3}` or `{"tournamentSlug":"wtc-2026"}`).
 
+## Forced password change (now enforced by the API)
+
+If the account has `mustChangePassword`, the access token carries it and **every business endpoint
+returns `403` with `code: "password_change_required"`**; only `/api/v1/auth/me`, `/api/v1/auth/password`,
+`/api/v1/auth/refresh` and `/api/v1/auth/logout` stay reachable. So route to the change-password screen
+right after login when `user.mustChangePassword` is true, and treat that 403 anywhere else the same way.
+A successful change revokes every session — send the user back to `/login`.
+
+`POST /auth/login` can also answer `429` with `code: "too_many_attempts"` (per-IP limit).
+
 ## Not built yet (do not fake in the UI)
 
-News revisions/history · cross-section search endpoint · binary media uploads (only URL registration)
-· image resizing/variants · 2FA · per-IP rate limiting. `mustChangePassword` is exposed and cleared by
-`POST /auth/password`, but the API does not block requests while it is true — the panel should still
-force the screen itself, then send the user back to `/login` (the session is revoked).
+News revisions/history · binary media uploads (only URL registration) · image resizing/variants ·
+2FA · JWT key rotation. Per-IP sign-in limiting **is** implemented (`429 too_many_attempts`).
 
 ## Screens
 

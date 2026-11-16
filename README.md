@@ -6,7 +6,7 @@ separate admin panel from one deployable.
 
 > **Status:** Phase 1 (foundation, authentication, RBAC, users/roles, audit trail, news
 > lifecycle, public read API, sitemaps, OpenAPI) is implemented on this branch and green in CI —
-> 71 integration tests against PostgreSQL 16. Public URLs match the shipped website
+> 77 tests (74 integration + 3 unit) against PostgreSQL 16. Public URLs match the shipped website
 > (`/news/{slug}`, `/news?filter=`) — see `docs/CONTRACTS.md`. `docs/PROGRESS.md` lists exactly what is
 > verified and what is still open; read it before treating anything as production-ready.
 
@@ -111,6 +111,7 @@ lockout, audit entries for failed sign-in and publishing, slug conflicts, passwo
 | --- | --- | --- |
 | Auth | `POST /api/v1/auth/login` · `POST /api/v1/auth/refresh` · `POST /api/v1/auth/logout` | anonymous (possession of the refresh token is the credential) |
 | Auth | `GET /api/v1/auth/me` | any valid access token |
+| Public · search | `GET /api/v1/public/search?q=&limit=` | anonymous; news, fixtures, series, teams, players, videos in one call |
 | Public · videos | `GET /api/v1/public/videos` · `/videos/{slug}` | anonymous, **published only** |
 | Public · match detail | `GET /api/v1/public/matches/{slug}/scorecard` · `/commentary` · `/rankings?format=` · `/homepage` · `/redirects?path=` | anonymous |
 | Public · cricket | `GET /api/v1/public/teams` · `/teams/{slug}` · `/players` · `/players/{slug}` · `/tournaments` · `/tournaments/{slug}` · `/tournaments/{slug}/standings` · `/matches` · `/matches/{slug}` | anonymous, **active/hidden rules enforced** |
