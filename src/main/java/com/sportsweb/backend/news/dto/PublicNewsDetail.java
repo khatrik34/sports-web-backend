@@ -18,6 +18,7 @@ public record PublicNewsDetail(
         String coverImageUrl,
         String coverImageAlt,
         boolean featured,
+        int readTime,
         Instant publishedAt,
         Instant updatedAt,
         String path,

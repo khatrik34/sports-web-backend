@@ -3,6 +3,8 @@ package com.sportsweb.backend.news;
 import com.sportsweb.backend.common.error.ApiException;
 import com.sportsweb.backend.common.web.PageResponse;
 import com.sportsweb.backend.common.web.Pageables;
+import com.sportsweb.backend.config.PublicSiteProperties;
+import com.sportsweb.backend.news.dto.NewsSitemapEntryResponse;
 import com.sportsweb.backend.news.dto.PublicCategoryResponse;
 import com.sportsweb.backend.news.dto.PublicNewsDetail;
 import com.sportsweb.backend.news.dto.PublicNewsSummary;
@@ -14,8 +16,8 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -31,15 +33,20 @@ public class NewsPublicService {
     private final NewsMapper mapper;
     private final NewsCategoryService categoryService;
     private final NewsUrlBuilder urlBuilder;
+    private final String publicSiteLanguage;
 
     public NewsPublicService(NewsArticleRepository articleRepository,
                              NewsMapper mapper,
                              NewsCategoryService categoryService,
-                             NewsUrlBuilder urlBuilder) {
+                             NewsUrlBuilder urlBuilder,
+                             PublicSiteProperties publicSiteProperties) {
         this.articleRepository = articleRepository;
         this.mapper = mapper;
         this.categoryService = categoryService;
         this.urlBuilder = urlBuilder;
+        this.publicSiteLanguage = publicSiteProperties.getLanguage() == null
+                ? "en"
+                : publicSiteProperties.getLanguage();
     }
 
     @Transactional(readOnly = true)
@@ -87,19 +94,45 @@ public class NewsPublicService {
         return categoryService.listForPublic();
     }
 
+    /**
+     * Article entries for the website's sitemap.xml. Static section paths and the other
+     * content types stay owned by the website until their modules exist here.
+     */
     @Transactional(readOnly = true)
     public List<SitemapEntryResponse> sitemap() {
         Instant now = Instant.now();
-        List<SitemapEntryResponse> entries = new ArrayList<>();
-        articleRepository.findAllByStatusAndPublishedAtLessThanEqualOrderByPublishedAtDesc(NewsStatus.PUBLISHED, now)
-                .forEach(article -> entries.add(new SitemapEntryResponse(
+        return articleRepository.findAllByStatusAndPublishedAtLessThanEqualOrderByPublishedAtDesc(NewsStatus.PUBLISHED, now)
+                .stream()
+                .map(article -> new SitemapEntryResponse(
                         urlBuilder.absoluteUrl(urlBuilder.path(article)),
                         article.getUpdatedAt(),
                         "daily",
-                        0.8)));
-        for (PublicCategoryResponse category : categoryService.listForPublic()) {
-            entries.add(new SitemapEntryResponse(category.url(), null, "weekly", 0.6));
-        }
-        return entries;
+                        0.8))
+                .toList();
+    }
+
+    /**
+     * Google News sitemap feed: only articles published inside the window (48h by default,
+     * as the website already does). Bounded to 168h so a client cannot ask for everything.
+     */
+    @Transactional(readOnly = true)
+    public List<NewsSitemapEntryResponse> newsSitemap(int hours) {
+        int safeHours = Math.min(Math.max(hours, 1), 168);
+        Instant now = Instant.now();
+        Instant since = now.minus(Duration.ofHours(safeHours));
+        Specification<NewsArticle> specification = NewsSpecifications.publiclyVisible(now)
+                .and((root, query, cb) -> cb.greaterThanOrEqualTo(root.get("publishedAt"), since));
+        return articleRepository.findAll(specification, Sort.by(Sort.Direction.DESC, "publishedAt"))
+                .stream()
+                .map(article -> new NewsSitemapEntryResponse(
+                        urlBuilder.absoluteUrl(urlBuilder.path(article)),
+                        article.getTitle(),
+                        article.getPublishedAt(),
+                        language()))
+                .toList();
+    }
+
+    private String language() {
+        return publicSiteLanguage;
     }
 }

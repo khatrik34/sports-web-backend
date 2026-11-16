@@ -17,6 +17,16 @@ public class NewsUrlBuilder {
         this.properties = properties;
     }
 
+    /** Listing page of the website. */
+    public String newsListPath() {
+        return "/news";
+    }
+
+    /** The website filters categories with /news?filter=..., it has no category URL of its own. */
+    public String categoryFilterPath(String categorySlug) {
+        return newsListPath() + "?filter=" + categorySlug;
+    }
+
     /** Path used for API payloads: stored canonical path first, otherwise derived. */
     public String path(NewsArticle article) {
         String canonical = article.getCanonicalPath();
@@ -28,7 +38,7 @@ public class NewsUrlBuilder {
 
     /** Path derived purely from the template, ignoring any stored canonical path. */
     public String derivePath(NewsArticle article) {
-        String template = properties.getArticlePathTemplate() == null ? "/{categorySlug}/{slug}"
+        String template = properties.getArticlePathTemplate() == null ? "/news/{slug}"
                 : properties.getArticlePathTemplate();
         String categorySlug = article.getCategory() == null ? null : article.getCategory().getSlug();
         String path = template;
@@ -42,7 +52,7 @@ public class NewsUrlBuilder {
     }
 
     public String categoryPath(NewsCategory category) {
-        return "/category/" + category.getSlug();
+        return categoryFilterPath(category.getSlug());
     }
 
     public String absoluteUrl(String path) {

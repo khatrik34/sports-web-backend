@@ -1,6 +1,7 @@
 package com.sportsweb.backend.news;
 
 import com.sportsweb.backend.common.web.PageResponse;
+import com.sportsweb.backend.news.dto.NewsSitemapEntryResponse;
 import com.sportsweb.backend.news.dto.PublicCategoryResponse;
 import com.sportsweb.backend.news.dto.PublicNewsDetail;
 import com.sportsweb.backend.news.dto.PublicNewsSummary;
@@ -59,8 +60,14 @@ public class NewsPublicController {
     }
 
     @GetMapping("/sitemap")
-    @Operation(summary = "Sitemap entries for published articles and categories")
+    @Operation(summary = "Sitemap entries for published articles (/news/{slug} URLs)")
     public List<SitemapEntryResponse> sitemap() {
         return newsPublicService.sitemap();
+    }
+
+    @GetMapping("/news-sitemap")
+    @Operation(summary = "Google News sitemap feed for recently published articles (default 48h)")
+    public List<NewsSitemapEntryResponse> newsSitemap(@RequestParam(defaultValue = "48") int hours) {
+        return newsPublicService.newsSitemap(hours);
     }
 }

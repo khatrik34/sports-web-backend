@@ -95,9 +95,11 @@ app:
   public-site:
     # Used when building absolute URLs and canonical links for the public API.
     base-url: ${APP_PUBLIC_SITE_BASE_URL:http://localhost:3000}
-    # Article path shape of the existing website. {categorySlug} and {slug} are replaced;
-    # when an article has no category the {categorySlug} segment is dropped.
-    article-path-template: ${APP_ARTICLE_PATH_TEMPLATE:/{categorySlug}/{slug}}
+    # Article path shape of the existing website (verified: /news/{slug}).
+    # {slug} is always substituted; {categorySlug} is supported but not part of the real URL.
+    article-path-template: ${APP_ARTICLE_PATH_TEMPLATE:/news/{slug}}
+    # Language reported by the news sitemap feed.
+    language: ${APP_PUBLIC_SITE_LANGUAGE:en}
   bootstrap:
     # Opt-in creation of the very first administrator. No user rows are seeded by Flyway.
     enabled: ${APP_BOOTSTRAP_ENABLED:false}

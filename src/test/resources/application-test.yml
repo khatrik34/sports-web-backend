@@ -17,7 +17,7 @@ app:
       lockout-duration: PT15M
   public-site:
     base-url: https://www.example.test
-    article-path-template: /{categorySlug}/{slug}
+    article-path-template: /news/{slug}
   bootstrap:
     enabled: true
     admin-email: admin@test.local

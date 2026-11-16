@@ -42,8 +42,9 @@ public class NewsCategoryService {
                         category.getSlug(),
                         category.getName(),
                         category.getDescription(),
-                        urlBuilder.categoryPath(category),
-                        urlBuilder.absoluteUrl(urlBuilder.categoryPath(category))))
+                        category.getSlug(),
+                        urlBuilder.categoryFilterPath(category.getSlug()),
+                        urlBuilder.absoluteUrl(urlBuilder.categoryFilterPath(category.getSlug()))))
                 .toList();
     }
 

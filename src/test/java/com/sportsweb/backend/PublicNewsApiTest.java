@@ -49,7 +49,9 @@ class PublicNewsApiTest extends AbstractIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.slug").value(articleSlug))
                 .andExpect(jsonPath("$.categorySlug").value(categorySlug))
-                .andExpect(jsonPath("$.seo.canonicalUrl").value("https://www.example.test/" + categorySlug + "/" + articleSlug))
+                .andExpect(jsonPath("$.seo.canonicalUrl").value("https://www.example.test/news/" + articleSlug))
+                .andExpect(jsonPath("$.path").value("/news/" + articleSlug))
+                .andExpect(jsonPath("$.readTime").isNumber())
                 .andExpect(jsonPath("$.seo.robots").value("index,follow"))
                 .andExpect(jsonPath("$.id").doesNotExist())
                 .andExpect(jsonPath("$.status").doesNotExist())
@@ -113,6 +115,72 @@ class PublicNewsApiTest extends AbstractIntegrationTest {
         mockMvc.perform(get("/api/v1/public/categories")).andExpect(status().isOk());
         mockMvc.perform(get("/api/v1/public/sitemap")).andExpect(status().isOk());
         mockMvc.perform(get("/api/v1/public/news/latest?limit=5")).andExpect(status().isOk());
+    }
+
+    @Test
+    void sitemapUsesTheRealNewsUrlShape() throws Exception {
+        String adminToken = adminToken();
+        JsonNode article = createArticle(adminToken, "Sitemap story " + uniqueSlug("t"), "Public summary", null);
+        String articleSlug = article.get("slug").asText();
+        publishArticle(adminToken, article.get("id").asText(), null);
+
+        JsonNode entries = getJson("/api/v1/public/sitemap", null);
+        boolean found = false;
+        for (JsonNode entry : entries) {
+            if (("https://www.example.test/news/" + articleSlug).equals(entry.path("loc").asText())) {
+                found = true;
+                assertThat(entry.path("lastModified").isTextual()).isTrue();
+            }
+        }
+        assertThat(found).as("published article is listed as /news/{slug}").isTrue();
+    }
+
+    @Test
+    void newsSitemapOnlyContainsRecentlyPublishedArticles() throws Exception {
+        String adminToken = adminToken();
+        JsonNode fresh = createArticle(adminToken, "Fresh story " + uniqueSlug("t"), "Public summary", null);
+        JsonNode old = createArticle(adminToken, "Old story " + uniqueSlug("t"), "Public summary", null);
+        publishArticle(adminToken, fresh.get("id").asText(), null);
+        String tenDaysAgo = java.time.Instant.now().minus(10, ChronoUnit.DAYS).toString();
+        publishArticle(adminToken, old.get("id").asText(), tenDaysAgo);
+
+        JsonNode feed = getJson("/api/v1/public/news-sitemap", null);
+        boolean hasFresh = false;
+        boolean hasOld = false;
+        for (JsonNode entry : feed) {
+            String loc = entry.path("loc").asText();
+            if (loc.endsWith("/news/" + fresh.get("slug").asText())) {
+                hasFresh = true;
+                assertThat(entry.path("title").asText()).isNotBlank();
+                assertThat(entry.path("language").asText()).isEqualTo("en");
+            }
+            if (loc.endsWith("/news/" + old.get("slug").asText())) {
+                hasOld = true;
+            }
+        }
+        assertThat(hasFresh).as("article published now is in the 48h news sitemap").isTrue();
+        assertThat(hasOld).as("article published ten days ago is outside the 48h window").isFalse();
+
+        // the window is bounded server side
+        mockMvc.perform(get("/api/v1/public/news-sitemap?hours=999999")).andExpect(status().isOk());
+    }
+
+    @Test
+    void categoryPathMatchesTheWebsiteFilterUrl() throws Exception {
+        String adminToken = adminToken();
+        String slug = uniqueSlug("cat");
+        createCategory(adminToken, slug);
+
+        JsonNode categories = getJson("/api/v1/public/categories", null);
+        boolean found = false;
+        for (JsonNode category : categories) {
+            if (slug.equals(category.path("slug").asText())) {
+                found = true;
+                assertThat(category.path("path").asText()).isEqualTo("/news?filter=" + slug);
+                assertThat(category.path("url").asText()).isEqualTo("https://www.example.test/news?filter=" + slug);
+            }
+        }
+        assertThat(found).as("category is listed with the website filter URL").isTrue();
     }
 
     private boolean listContainsSlug(JsonNode page, String slug) {

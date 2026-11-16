@@ -91,6 +91,7 @@ public class NewsMapper {
                 article.getCoverImageUrl(),
                 article.getCoverImageAlt(),
                 article.isFeatured(),
+                readTimeMinutes(article),
                 article.getPublishedAt(),
                 article.getUpdatedAt(),
                 path,
@@ -124,11 +125,23 @@ public class NewsMapper {
                 article.getCoverImageUrl(),
                 article.getCoverImageAlt(),
                 article.isFeatured(),
+                readTimeMinutes(article),
                 article.getPublishedAt(),
                 article.getUpdatedAt(),
                 path,
                 url,
                 seo);
+    }
+
+    /** Estimated reading time, ~200 words per minute, at least one minute. */
+    private int readTimeMinutes(NewsArticle article) {
+        String text = article.getBody() == null ? "" : article.getBody().replaceAll("<[^>]+>", " ");
+        String trimmed = text.trim();
+        if (trimmed.isEmpty()) {
+            return 1;
+        }
+        int words = trimmed.split("\\s+").length;
+        return Math.max(1, (int) Math.ceil(words / 200.0));
     }
 
     private String categorySlug(NewsArticle article) {
