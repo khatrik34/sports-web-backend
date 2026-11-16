@@ -58,6 +58,20 @@ SELECT version();          -- should say PostgreSQL 16.x
 If you want `psql` in a normal terminal, add `C:\Program Files\PostgreSQL\16\bin` to PATH, or use
 `winget install PostgreSQL.PostgreSQL.16` next time.
 
+### Where Query Tool lives in pgAdmin
+
+`Servers` is only a folder of registered servers, so right-clicking it shows no Query Tool — this trips
+everyone up. A query always runs **inside one database**, so:
+
+```
+Servers → local → Databases → postgres      → right-click → Query Tool   ✅ (create role/database here)
+Servers → local → Databases → sportsweb     → right-click → Query Tool   ✅ (inspect tables here)
+```
+
+After `CREATE DATABASE sportsweb`, right-click `Databases` → **Refresh** so it appears. Check the database
+name shown at the top of the Query Tool tab — running app SQL against `postgres` by mistake is the most
+common slip. One Query Tool window stays on one database; open another tab to switch.
+
 ### Connect pgAdmin to it
 
 *Register → Server…* → Name `local`, Host `localhost`, Port `5432`, Maintenance database `postgres`,
@@ -72,7 +86,7 @@ CREATE USER sportsweb WITH PASSWORD 'StrongPass123!';
 CREATE DATABASE sportsweb OWNER sportsweb;
 ```
 
-Run it in pgAdmin (**right-click the server → Query Tool**) or `psql -U postgres`.
+Run it in pgAdmin (**right-click the `postgres` database → Query Tool**) or `psql -U postgres`.
 
 ### Other platforms
 
@@ -97,6 +111,11 @@ docker run -d --name sportsweb-pg -p 5432:5432 -e POSTGRES_PASSWORD=StrongPass12
 git clone https://github.com/khatrik34/sports-web-backend.git
 cd sports-web-backend
 ```
+
+**No Tomcat to install.** Spring Boot ships an **embedded Tomcat** through `spring-boot-starter-web`, so
+running the main class is the whole deployment: it starts Tomcat on port **8080** (`Tomcat started on port
+8080` in the log). Do **not** create an IntelliJ "Tomcat Server" run configuration — that is for classic WAR
+projects. The build produces a self-contained jar (`java -jar app.jar`), no servlet container, no `web.xml`.
 
 **In IntelliJ:** *File → Open* → pick the `sports-web-backend` folder (the one with `pom.xml`) → trust the
 project → let Maven finish downloading. Then:
@@ -133,6 +152,25 @@ SPRING_FLYWAY_LOCATIONS=classpath:db/migration,classpath:db/demo
   after the first successful start.
 - The bootstrap password must satisfy the policy: 12+ characters with upper case, lower case, a digit and
   a symbol.
+
+### Where the database credentials go
+
+The app reads exactly three variables — `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` — and they must belong to the
+**application user** (`sportsweb`), not the `postgres` superuser. `postgres` is only for pgAdmin/psql. Put
+them in **one** of these places:
+
+1. **IntelliJ run configuration** (recommended): *Run → Edit Configurations… → SportsWebBackendApplication →
+   Environment variables* (the 📁 icon opens a proper editor, one `NAME=value` per row).
+2. **Program arguments** in the same dialog, one per line:
+   `--spring.datasource.url=jdbc:postgresql://localhost:5432/sportsweb`
+   `--spring.datasource.username=sportsweb`
+   `--spring.datasource.password=StrongPass123!`
+   (other settings: `--app.security.jwt.secret=…`, `--app.bootstrap.enabled=true`)
+3. **A properties file outside the repository**, e.g. `C:/secrets/application-local.yml`, with
+   `-Dspring.config.additional-location=file:C:/secrets/application-local.yml` in *VM options*.
+
+Never put a real password in a tracked file: the run configuration and `application-local.yml` stay on your
+machine, the repository does not.
 
 **Important:** a `.env` file is used **only by docker compose**. Running from IntelliJ or `mvn` does not
 read it — the variables above must be real environment variables (IDE run configuration, or `export` /
@@ -175,6 +213,16 @@ call (`403 password_change_required`) until you change it, which is exactly what
 change-password screen does.
 
 ---
+
+### First-run checklist
+
+| Log line / URL | Meaning |
+| --- | --- |
+| `Tomcat started on port 8080` | the embedded server is up |
+| `HikariPool-1 - Start completed` | the database credentials work |
+| `Successfully applied 9 migrations` | Flyway created the 23 tables (+ seed data if `db/demo` is in the locations) |
+| `http://localhost:8080/actuator/health` → `{"status":"UP"}` | everything is ready |
+| `http://localhost:8080/swagger-ui.html` | the full API surface |
 
 ## 3. The admin panel
 
