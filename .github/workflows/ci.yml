@@ -35,6 +35,22 @@ jobs:
           # GitHub hosted runners provide Docker, which Testcontainers needs for PostgreSQL.
           TESTCONTAINERS_RYUK_DISABLED: 'false'
 
+      - name: Annotate build failure
+        if: failure()
+        shell: bash
+        run: |
+          # Surfaces the most useful lines of a failed build as check-run annotations.
+          log=maven-build.log
+          [ -f "$log" ] || exit 0
+          mapfile -t lines < <(grep -E "error:|ERROR|symbol:|location:|Caused by|Tests run:.*Fail|BUILD FAILURE" "$log" | tail -n 10)
+          if [ ${#lines[@]} -eq 0 ]; then
+            mapfile -t lines < <(tail -n 10 "$log")
+          fi
+          for line in "${lines[@]}"; do
+            line="${line//[$'\r'$'\n']/ }"
+            printf '::error::%s\n' "$line"
+          done
+
       - name: Upload build log
         if: always()
         uses: actions/upload-artifact@v4
