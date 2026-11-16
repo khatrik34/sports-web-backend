@@ -26,17 +26,68 @@ git --version
 
 ---
 
-## 1. Database
+## 1. Database — installing PostgreSQL 16
 
-Install PostgreSQL 16 (remember the `postgres` superuser password and port 5432). Then create the app
-role and database — the app must own the database so Flyway can create tables:
+**pgAdmin is only a GUI client.** If pgAdmin's tree is empty it means no server is installed yet, not that
+you did something wrong. Check first:
+
+- Start menu → **SQL Shell (psql)**; if it is missing, no server is installed.
+- Or `services.msc` → look for a service named `postgresql-x64-16`.
+
+### Windows (installer)
+
+1. Download from <https://www.postgresql.org/download/windows/> → *Download the installer* (EDB) →
+   **PostgreSQL 16.x, Windows x86-64**.
+2. Run it. Keep the defaults, with these choices:
+   - **Components**: `PostgreSQL Server` ✅, `Command Line Tools` ✅, `pgAdmin 4` (leave ticked or untick if
+     you already have a newer one), `Stack Builder` ❌.
+   - **Data directory**: default.
+   - **Password**: the `postgres` superuser password — write it down. This is the *server* password, not
+     the app's.
+   - **Port**: `5432`. Use `5433` only if something already listens there.
+3. Finish (do not launch Stack Builder). The service `postgresql-x64-16` starts automatically with Windows.
+
+Verify:
+
+```bash
+# Start menu -> SQL Shell (psql), then:
+SELECT version();          -- should say PostgreSQL 16.x
+\q
+```
+
+If you want `psql` in a normal terminal, add `C:\Program Files\PostgreSQL\16\bin` to PATH, or use
+`winget install PostgreSQL.PostgreSQL.16` next time.
+
+### Connect pgAdmin to it
+
+*Register → Server…* → Name `local`, Host `localhost`, Port `5432`, Maintenance database `postgres`,
+Username `postgres`, your password → **Save password**.
+
+### Create the app role and database
+
+The app must **own** its database, otherwise Flyway fails with `permission denied for schema public`:
 
 ```sql
 CREATE USER sportsweb WITH PASSWORD 'StrongPass123!';
 CREATE DATABASE sportsweb OWNER sportsweb;
 ```
 
-Run that in pgAdmin (**right-click server → Query Tool**) or `psql -U postgres`.
+Run it in pgAdmin (**right-click the server → Query Tool**) or `psql -U postgres`.
+
+### Other platforms
+
+```bash
+# macOS (Homebrew)
+brew install postgresql@16 && brew services start postgresql@16
+createuser sportsweb && createdb -O sportsweb sportsweb
+
+# Ubuntu / Debian
+sudo apt install postgresql-16 && sudo -u postgres psql -c "CREATE USER sportsweb PASSWORD 'StrongPass123!';" \
+  && sudo -u postgres createdb -O sportsweb sportsweb
+
+# Any OS with Docker, no installation at all
+docker run -d --name sportsweb-pg -p 5432:5432 -e POSTGRES_PASSWORD=StrongPass123! postgres:16-alpine
+```
 
 ---
 
