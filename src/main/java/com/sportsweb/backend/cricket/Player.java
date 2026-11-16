@@ -70,7 +70,7 @@ public class Player extends AuditedEntity {
     @Column(name = "version", nullable = false)
     private long version = 0;
 
-    protected Player() {
+    public Player() {
     }
 
     public UUID getId() {

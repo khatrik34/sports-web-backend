@@ -68,7 +68,7 @@ public class Standing extends AuditedEntity {
     @Column(name = "version", nullable = false)
     private long version = 0;
 
-    protected Standing() {
+    public Standing() {
     }
 
     public UUID getId() {

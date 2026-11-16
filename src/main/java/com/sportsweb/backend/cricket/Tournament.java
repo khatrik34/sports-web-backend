@@ -87,7 +87,7 @@ public class Tournament extends AuditedEntity {
     @Column(name = "version", nullable = false)
     private long version = 0;
 
-    protected Tournament() {
+    public Tournament() {
     }
 
     public UUID getId() {

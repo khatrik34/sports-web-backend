@@ -70,7 +70,7 @@ public class Team extends AuditedEntity {
     @Column(name = "version", nullable = false)
     private long version = 0;
 
-    protected Team() {
+    public Team() {
     }
 
     public UUID getId() {
