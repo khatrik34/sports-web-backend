@@ -45,6 +45,11 @@ class OpenApiContractTest extends AbstractIntegrationTest {
         assertThat(paths.has("/api/v1/public/matches/{slug}/commentary")).isTrue();
         assertThat(paths.has("/api/v1/admin/matches/{id}/scorecard")).isTrue();
         assertThat(paths.has("/api/v1/public/rankings")).isTrue();
+        assertThat(paths.has("/api/v1/public/redirects")).isTrue();
+        assertThat(paths.has("/api/v1/admin/redirects")).isTrue();
+        assertThat(paths.has("/api/v1/public/homepage")).isTrue();
+        assertThat(paths.has("/api/v1/admin/homepage")).isTrue();
+        assertThat(paths.has("/api/v1/admin/media")).isTrue();
     }
 
     /**

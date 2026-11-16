@@ -14,6 +14,12 @@ public final class PermissionCodes {
     public static final String CRICKET_WRITE = "cricket:write";
     public static final String VIDEOS_READ = "videos:read";
     public static final String VIDEOS_WRITE = "videos:write";
+    public static final String SEO_READ = "seo:read";
+    public static final String SEO_WRITE = "seo:write";
+    public static final String HOMEPAGE_READ = "homepage:read";
+    public static final String HOMEPAGE_WRITE = "homepage:write";
+    public static final String MEDIA_READ = "media:read";
+    public static final String MEDIA_WRITE = "media:write";
 
 
     private PermissionCodes() {
