@@ -6,7 +6,11 @@ import com.sportsweb.backend.common.web.PageResponse;
 import com.sportsweb.backend.common.web.Pageables;
 import com.sportsweb.backend.cricket.CricketCategory;
 import com.sportsweb.backend.cricket.CricketFormat;
+import com.sportsweb.backend.cricket.Commentary;
+import com.sportsweb.backend.cricket.CommentaryRepository;
 import com.sportsweb.backend.cricket.CricketMapper;
+import com.sportsweb.backend.cricket.InningsRepository;
+import com.sportsweb.backend.cricket.ScorecardMapper;
 import com.sportsweb.backend.cricket.Match;
 import com.sportsweb.backend.cricket.MatchRepository;
 import com.sportsweb.backend.cricket.MatchSpecifications;
@@ -20,8 +24,12 @@ import com.sportsweb.backend.cricket.TeamSpecifications;
 import com.sportsweb.backend.cricket.Tournament;
 import com.sportsweb.backend.cricket.TournamentRepository;
 import com.sportsweb.backend.cricket.TournamentSpecifications;
+import com.sportsweb.backend.cricket.TournamentStatus;
+import com.sportsweb.backend.cricket.dto.CommentaryResponse;
+import com.sportsweb.backend.cricket.dto.InningsResponse;
 import com.sportsweb.backend.cricket.dto.PublicMatch;
 import com.sportsweb.backend.cricket.dto.PublicPlayer;
+import com.sportsweb.backend.cricket.dto.PublicRankings;
 import com.sportsweb.backend.cricket.dto.PublicStandingRow;
 import com.sportsweb.backend.cricket.dto.PublicTeam;
 import com.sportsweb.backend.cricket.dto.PublicTournament;
@@ -52,6 +60,9 @@ public class CricketPublicService {
     private final TournamentRepository tournamentRepository;
     private final MatchRepository matchRepository;
     private final StandingRepository standingRepository;
+    private final InningsRepository inningsRepository;
+    private final CommentaryRepository commentaryRepository;
+    private final ScorecardMapper scorecardMapper;
     private final CricketMapper mapper;
 
     public CricketPublicService(TeamRepository teamRepository,
@@ -59,12 +70,18 @@ public class CricketPublicService {
                                 TournamentRepository tournamentRepository,
                                 MatchRepository matchRepository,
                                 StandingRepository standingRepository,
+                                InningsRepository inningsRepository,
+                                CommentaryRepository commentaryRepository,
+                                ScorecardMapper scorecardMapper,
                                 CricketMapper mapper) {
         this.teamRepository = teamRepository;
         this.playerRepository = playerRepository;
         this.tournamentRepository = tournamentRepository;
         this.matchRepository = matchRepository;
         this.standingRepository = standingRepository;
+        this.inningsRepository = inningsRepository;
+        this.commentaryRepository = commentaryRepository;
+        this.scorecardMapper = scorecardMapper;
         this.mapper = mapper;
     }
 
@@ -145,6 +162,36 @@ public class CricketPublicService {
                 .toList();
     }
 
+    /**
+     * The /rankings page reuses the points table. Prefer the ongoing series for the requested
+     * format, otherwise the most recently started one; 404 when no series exists yet.
+     */
+    @Transactional(readOnly = true)
+    public PublicRankings rankings(String format) {
+        CricketFormat parsed = parseFormat(format);
+        Specification<Tournament> specification = TournamentSpecifications.active();
+        if (parsed != null) {
+            specification = specification.and((root, query, cb) -> cb.equal(root.get("format"), parsed));
+        }
+        List<Tournament> candidates = tournamentRepository.findAll(specification,
+                Sort.by(Sort.Order.desc("startDate").nullsLast(), Sort.Order.desc("updatedAt")));
+        Tournament chosen = candidates.stream()
+                .filter(candidate -> candidate.getStatus() == TournamentStatus.ONGOING)
+                .findFirst()
+                .orElse(candidates.isEmpty() ? null : candidates.get(0));
+        if (chosen == null) {
+            throw ApiException.notFound("Rankings");
+        }
+        List<PublicStandingRow> rows = standingRepository
+                .findByTournamentIdOrderByPositionAscPlayedDesc(chosen.getId())
+                .stream()
+                .map(mapper::toPublicStanding)
+                .toList();
+        return new PublicRankings(chosen.getId(), chosen.getName(), chosen.getSlug(),
+                chosen.getFormat().name(), CricketMapper.categoryLabel(chosen.getCategory()),
+                chosen.getStatus().name(), rows);
+    }
+
     // ---------------------------------------------------------------- fixtures
 
     /**
@@ -195,10 +242,30 @@ public class CricketPublicService {
 
     @Transactional(readOnly = true)
     public PublicMatch match(String slug) {
-        Match match = matchRepository.findBySlug(slug)
+        return mapper.toPublicMatch(visibleMatch(slug));
+    }
+
+    @Transactional(readOnly = true)
+    public List<InningsResponse> scorecard(String slug) {
+        Match match = visibleMatch(slug);
+        return inningsRepository.findByMatchIdOrderByInningsNumberAsc(match.getId())
+                .stream()
+                .map(scorecardMapper::toInnings)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<CommentaryResponse> commentary(String slug, int page, int size) {
+        Match match = visibleMatch(slug);
+        Page<Commentary> result = commentaryRepository.findByMatchIdOrderByCreatedAtDescIdDesc(match.getId(),
+                Pageables.of(page, size, Sort.unsorted()));
+        return PageResponse.from(result, scorecardMapper::toCommentary);
+    }
+
+    private Match visibleMatch(String slug) {
+        return matchRepository.findBySlug(slug)
                 .filter(Match::isVisible)
                 .orElseThrow(() -> ApiException.notFound("Match"));
-        return mapper.toPublicMatch(match);
     }
 
     // ---------------------------------------------------------------- parsing

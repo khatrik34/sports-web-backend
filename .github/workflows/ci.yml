@@ -65,6 +65,15 @@ jobs:
           SPRING_DATASOURCE_PASSWORD: sportsweb
           TESTCONTAINERS_RYUK_DISABLED: 'false'
 
+      - name: Upload OpenAPI snapshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          # The website and the admin panel can generate their types from this exact document.
+          name: openapi-snapshot
+          path: target/openapi.json
+          if-no-files-found: warn
+
       - name: Annotate build failure
         if: failure()
         shell: bash

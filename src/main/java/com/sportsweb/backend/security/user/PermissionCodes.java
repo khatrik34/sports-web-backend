@@ -12,6 +12,9 @@ public final class PermissionCodes {
     public static final String AUDIT_READ = "audit:read";
     public static final String CRICKET_READ = "cricket:read";
     public static final String CRICKET_WRITE = "cricket:write";
+    public static final String VIDEOS_READ = "videos:read";
+    public static final String VIDEOS_WRITE = "videos:write";
+
 
     private PermissionCodes() {
     }

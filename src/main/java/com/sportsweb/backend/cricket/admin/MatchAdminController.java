@@ -14,11 +14,18 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.RestController;
 import java.net.URI;
+import java.util.List;
 import java.util.UUID;
 import com.sportsweb.backend.common.web.PageResponse;
 import com.sportsweb.backend.cricket.dto.AdminMatchResponse;
+import com.sportsweb.backend.cricket.dto.CommentaryRequest;
+import com.sportsweb.backend.cricket.dto.CommentaryResponse;
+import com.sportsweb.backend.cricket.dto.InningsResponse;
+import com.sportsweb.backend.cricket.dto.ScorecardUpdateRequest;
 import com.sportsweb.backend.cricket.dto.MatchUpsertRequest;
 
 @RestController
@@ -28,9 +35,11 @@ import com.sportsweb.backend.cricket.dto.MatchUpsertRequest;
 public class MatchAdminController {
 
     private final MatchAdminService service;
+    private final MatchDetailAdminService matchDetailAdminService;
 
-    public MatchAdminController(MatchAdminService service) {
+    public MatchAdminController(MatchAdminService service, MatchDetailAdminService matchDetailAdminService) {
         this.service = service;
+        this.matchDetailAdminService = matchDetailAdminService;
     }
 
     @GetMapping
@@ -77,6 +86,46 @@ public class MatchAdminController {
     @Operation(summary = "Remove a fixture from the website without deleting it")
     public AdminMatchResponse hide(@PathVariable UUID id) {
         return service.setVisible(id, false);
+    }
+
+    @GetMapping("/{id}/scorecard")
+    @PreAuthorize("hasAuthority('cricket:read')")
+    @Operation(summary = "Read the scorecard of a fixture")
+    public List<InningsResponse> scorecard(@PathVariable UUID id) {
+        return matchDetailAdminService.scorecard(id);
+    }
+
+    @PutMapping("/{id}/scorecard")
+    @PreAuthorize("hasAuthority('cricket:write')")
+    @Operation(summary = "Replace the whole scorecard (atomic); staff-entered, no external feed")
+    public List<InningsResponse> replaceScorecard(@PathVariable UUID id,
+                                                  @Valid @RequestBody ScorecardUpdateRequest request) {
+        return matchDetailAdminService.replaceScorecard(id, request);
+    }
+
+    @GetMapping("/{id}/commentary")
+    @PreAuthorize("hasAuthority('cricket:read')")
+    @Operation(summary = "List commentary entries, newest first")
+    public PageResponse<CommentaryResponse> commentary(@PathVariable UUID id,
+                                                       @RequestParam(defaultValue = "0") int page,
+                                                       @RequestParam(defaultValue = "20") int size) {
+        return matchDetailAdminService.commentary(id, page, size);
+    }
+
+    @PostMapping("/{id}/commentary")
+    @PreAuthorize("hasAuthority('cricket:write')")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Append one ball-by-ball entry")
+    public CommentaryResponse addCommentary(@PathVariable UUID id, @Valid @RequestBody CommentaryRequest request) {
+        return matchDetailAdminService.addCommentary(id, request);
+    }
+
+    @DeleteMapping("/{id}/commentary/{entryId}")
+    @PreAuthorize("hasAuthority('cricket:write')")
+    @Operation(summary = "Delete one commentary entry")
+    public ResponseEntity<Void> deleteCommentary(@PathVariable UUID id, @PathVariable UUID entryId) {
+        matchDetailAdminService.deleteCommentary(id, entryId);
+        return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/{id}")
