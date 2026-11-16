@@ -33,6 +33,6 @@ class OpenApiContractTest extends AbstractIntegrationTest {
     @Test
     void swaggerUiIsServed() throws Exception {
         mockMvc.perform(get("/swagger-ui/index.html"))
-                .andExpect(status().is3xxRedirection());
+                .andExpect(status().isOk());
     }
 }
