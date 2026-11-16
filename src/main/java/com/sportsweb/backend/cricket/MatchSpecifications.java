@@ -5,6 +5,7 @@ import org.springframework.data.jpa.domain.Specification;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 
 public final class MatchSpecifications {
 
@@ -48,6 +49,16 @@ public final class MatchSpecifications {
         return (root, query, cb) -> cb.or(
                 cb.equal(root.join("team1", JoinType.LEFT).get("slug"), teamSlug),
                 cb.equal(root.join("team2", JoinType.LEFT).get("slug"), teamSlug));
+    }
+
+    /** Free text over both team names, the series name and the venue, for the search endpoint. */
+    public static Specification<Match> matchingText(String text) {
+        String pattern = "%" + text.trim().toLowerCase(Locale.ROOT) + "%";
+        return (root, query, cb) -> cb.or(
+                cb.like(cb.lower(root.join("team1", JoinType.LEFT).get("name")), pattern),
+                cb.like(cb.lower(root.join("team2", JoinType.LEFT).get("name")), pattern),
+                cb.like(cb.lower(root.join("tournament", JoinType.LEFT).get("name")), pattern),
+                cb.like(cb.lower(root.get("venue")), pattern));
     }
 
     public static Specification<Match> startingBetween(Instant from, Instant to) {

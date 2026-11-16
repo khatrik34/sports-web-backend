@@ -44,6 +44,7 @@ public class AuthService {
     private final UserAccountRepository userRepository;
     private final RefreshTokenService refreshTokenService;
     private final LoginAttemptService loginAttemptService;
+    private final LoginRateLimitService loginRateLimitService;
     private final JwtTokenService jwtTokenService;
     private final PasswordEncoder passwordEncoder;
     private final AuditService auditService;
@@ -53,6 +54,7 @@ public class AuthService {
     public AuthService(UserAccountRepository userRepository,
                        RefreshTokenService refreshTokenService,
                        LoginAttemptService loginAttemptService,
+                       LoginRateLimitService loginRateLimitService,
                        JwtTokenService jwtTokenService,
                        PasswordEncoder passwordEncoder,
                        AuditService auditService,
@@ -61,6 +63,7 @@ public class AuthService {
         this.userRepository = userRepository;
         this.refreshTokenService = refreshTokenService;
         this.loginAttemptService = loginAttemptService;
+        this.loginRateLimitService = loginRateLimitService;
         this.jwtTokenService = jwtTokenService;
         this.passwordEncoder = passwordEncoder;
         this.auditService = auditService;
@@ -71,9 +74,12 @@ public class AuthService {
     public TokenResponse login(LoginRequest request) {
         String email = normalizeEmail(request.email());
         Instant now = Instant.now();
+        RequestMetadata metadata = metadataProvider.current();
+        loginRateLimitService.checkAllowed(metadata.ipAddress());
 
         Optional<UserAccount> found = userRepository.findForAuthenticationByEmail(email);
         if (found.isEmpty()) {
+            loginRateLimitService.registerFailure(metadata.ipAddress());
             auditService.recordSecurityEvent(AuditAction.AUTH_LOGIN_FAILED, AuditOutcome.FAILURE,
                     email, null, "Sign-in attempt for an unknown account");
             throw invalidCredentials();
@@ -93,12 +99,13 @@ public class AuthService {
             throw ApiException.forbidden("account_disabled", "This account is disabled.");
         }
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+            loginRateLimitService.registerFailure(metadata.ipAddress());
             loginAttemptService.registerFailure(user.getId());
             throw invalidCredentials();
         }
 
         loginAttemptService.registerSuccess(user.getId());
-        RequestMetadata metadata = metadataProvider.current();
+        loginRateLimitService.reset(metadata.ipAddress());
         IssuedRefreshToken refreshToken = refreshTokenService.issue(user.getId(), metadata.ipAddress(), metadata.userAgent());
         return buildResponse(user, refreshToken);
     }
@@ -197,7 +204,8 @@ public class AuthService {
 
     private TokenResponse buildResponse(UserAccount user, IssuedRefreshToken refreshToken) {
         JwtTokenService.IssuedAccessToken accessToken =
-                jwtTokenService.issue(user.getId(), user.getEmail(), Authorities.of(user));
+                jwtTokenService.issue(user.getId(), user.getEmail(), Authorities.of(user),
+                        user.isMustChangePassword());
         return new TokenResponse(
                 accessToken.value(),
                 "Bearer",

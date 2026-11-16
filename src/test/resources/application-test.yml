@@ -15,6 +15,10 @@ app:
     login:
       max-failed-attempts: 5
       lockout-duration: PT15M
+      # The suite performs hundreds of sign-ins from one address (MockMvc loopback); the per-IP
+      # limiter is exercised by its own unit test instead of by starving the shared context.
+      ip-max-attempts: 100000
+      ip-window: PT10M
   public-site:
     base-url: https://www.example.test
     article-path-template: /news/{slug}

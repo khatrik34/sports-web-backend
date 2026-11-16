@@ -7,6 +7,7 @@ import com.sportsweb.backend.config.CorsProperties;
 import com.sportsweb.backend.config.DocsProperties;
 import com.sportsweb.backend.config.JwtProperties;
 import com.sportsweb.backend.config.PasswordProperties;
+import com.sportsweb.backend.security.web.PasswordChangeRequiredFilter;
 import com.sportsweb.backend.security.web.RestAccessDeniedHandler;
 import com.sportsweb.backend.security.web.RestAuthenticationEntryPoint;
 import org.springframework.context.annotation.Bean;
@@ -29,6 +30,7 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.core.convert.converter.Converter;
@@ -81,7 +83,8 @@ public class SecurityConfig {
                                                    CorsProperties corsProperties,
                                                    DocsProperties docsProperties,
                                                    RestAuthenticationEntryPoint authenticationEntryPoint,
-                                                   RestAccessDeniedHandler accessDeniedHandler) throws Exception {
+                                                   RestAccessDeniedHandler accessDeniedHandler,
+                                                   PasswordChangeRequiredFilter passwordChangeRequiredFilter) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource(corsProperties)))
@@ -109,6 +112,8 @@ public class SecurityConfig {
                     }
                     auth.anyRequest().denyAll();
                 });
+        // Runs right after the bearer token is authenticated and before any controller is reached.
+        http.addFilterAfter(passwordChangeRequiredFilter, BearerTokenAuthenticationFilter.class);
         return http.build();
     }
 
