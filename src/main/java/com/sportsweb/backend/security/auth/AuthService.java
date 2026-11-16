@@ -154,7 +154,6 @@ public class AuthService {
         });
     }
 
-    @Transactional(readOnly = true)
     /**
      * Changing your own password requires the old one, revokes every refresh token (all sessions
      * sign in again) and clears the {@code mustChangePassword} flag.
@@ -185,6 +184,7 @@ public class AuthService {
                 user.getEmail(), user.getId(), "Password changed by the account owner; sessions revoked: " + revoked);
     }
 
+    @Transactional(readOnly = true)
     public AuthenticatedUserResponse me() {
         UUID userId = currentUserProvider.requireUserId();
         UserAccount user = userRepository.findForAuthenticationById(userId)
