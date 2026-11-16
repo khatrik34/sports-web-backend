@@ -27,6 +27,12 @@ separate admin panel from one deployable.
 - Maven 3.9+ (no wrapper is committed)
 - Docker (PostgreSQL for the test suite via Testcontainers; also used by `docker-compose`)
 
+## Deploying (free tier)
+
+`docs/DEPLOYMENT.md` walks through two free options (Render + a free PostgreSQL, or an Oracle Cloud
+always-free VM with `docker compose`), all environment variables, the health check and the first-admin
+bootstrap. `render.yaml` is a ready blueprint for the first one.
+
 ## Quick start (local)
 
 ```bash

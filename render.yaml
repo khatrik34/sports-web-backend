@@ -1,0 +1,56 @@
+# Render Blueprint — free-tier deployment of the API.
+#
+# Render's own free PostgreSQL expires, so the database lives outside (Neon / Supabase / Aiven,
+# all free). Create the database first, then paste its connection details into the dashboard.
+#
+# Usage: Render Dashboard -> New -> Blueprint -> pick this repository -> Apply.
+services:
+  - type: web
+    name: sports-web-backend
+    runtime: docker
+    plan: free
+    region: singapore # closest free region to Pakistan
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /actuator/health
+    autoDeploy: true
+    envVars:
+      # Render injects PORT (10000); the app reads SERVER_PORT.
+      - key: SERVER_PORT
+        value: "10000"
+      # jdbc:postgresql://<host>/<db>?sslmode=require  (Neon/Supabase require TLS)
+      - key: DB_URL
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      # Generated once and kept across deploys. Rotating it signs every staff session out.
+      - key: APP_JWT_SECRET
+        generateValue: true
+      - key: APP_JWT_ISSUER
+        value: sports-web-backend
+      # Comma separated. The public website and the admin panel origins.
+      - key: APP_CORS_ALLOWED_ORIGINS
+        sync: false
+      # Absolute base URL used in canonical links and sitemaps (the website URL).
+      - key: APP_PUBLIC_SITE_BASE_URL
+        sync: false
+      - key: APP_ARTICLE_PATH_TEMPLATE
+        value: /news/{slug}
+      - key: APP_PUBLIC_SITE_LANGUAGE
+        value: en
+      # Keep Swagger closed on a public URL; flip to true only for a short demo.
+      - key: APP_DOCS_PUBLIC
+        value: "false"
+      # One-time bootstrap of the first administrator. Set, deploy, then set ENABLED=false.
+      - key: APP_BOOTSTRAP_ENABLED
+        sync: false
+      - key: APP_BOOTSTRAP_ADMIN_EMAIL
+        sync: false
+      - key: APP_BOOTSTRAP_ADMIN_PASSWORD
+        sync: false
+      - key: APP_BOOTSTRAP_ADMIN_DISPLAY_NAME
+        value: Administrator
+      # 512 MB instance: keep the heap modest and the GC small.
+      - key: JAVA_OPTS
+        value: "-XX:MaxRAMPercentage=70 -XX:+UseSerialGC -Duser.timezone=UTC"
