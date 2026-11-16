@@ -32,8 +32,12 @@ Read from `app/[...slug]/page.tsx`, `app/sitemap.ts`, `app/news-sitemap.xml/rout
 | `/cricket/match/{slug}` | `GET /api/v1/public/matches/{slug}` | ✅ served (summary; scorecard/commentary tabs come in Phase 3) |
 | `/cricket/series`, `/cricket/series/{slug}` | `GET /api/v1/public/tournaments`, `/{slug}` | ✅ served |
 | `/cricket/series/{slug}?filter=points-table` | `GET /api/v1/public/tournaments/{slug}/standings` | ✅ served |
-| `/cricket` (hub), `/rankings`, `?filter=top-scorers|top-wickets|squads` | — | ⏳ Phase 3 |
-| `/videos[/{slug}]` | — | ⏳ Phase 3 |
+| `/rankings` | `GET /public/rankings?format=` (current series' table) | ✅ served |
+| `/` homepage blocks | `GET /public/homepage` | ✅ served |
+| 404 / moved URLs | `GET /public/redirects?path=` (301/302/307/308/410) | ✅ served |
+| `/videos`, `/videos/{slug}` | `GET /public/videos?filter=`, `/videos/{slug}` | ✅ served |
+| match page `?tab=scorecard|live-commentary` | `GET /public/matches/{slug}/scorecard`, `/commentary` | ✅ served |
+| `/cricket` (hub), `?filter=top-scorers|top-wickets|squads` | — | ⏳ derived data, no endpoint yet |
 | `/about`, `/contact` | not content-managed | stays static |
 
 Notes that changed the backend:
@@ -134,13 +138,26 @@ Filter vocabulary is identical to the site's own: `?filter=live|upcoming|recent`
 
 ## 5. Public / admin endpoint summary (Phase 1–2)
 
-| Area | Public (anonymous) | Admin (`cricket:read` / `cricket:write`) |
+| Area | Public (anonymous) | Admin |
+| --- | --- | --- |
+| Videos | `GET /public/videos`, `/videos/{slug}` | `/admin/videos` (`videos:read` / `videos:write`) |
+| Match detail | `GET /public/matches/{slug}/scorecard`, `/commentary`, `GET /public/rankings` | `/admin/matches/{id}/scorecard`, `/commentary` (`cricket:*`) |
+| Homepage | `GET /public/homepage` | `GET/PUT /admin/homepage` (`homepage:read` / `homepage:write`) |
+| SEO | `GET /public/redirects?path=` | `/admin/redirects` (`seo:read` / `seo:write`) |
+| Media | — (assets referenced by URL) | `/admin/media` (`media:read` / `media:write`), metadata only |
+| Auth | `POST /auth/login`, `/refresh`, `/logout` | `POST /auth/password` (self-service), `GET /auth/me` |
 | --- | --- | --- |
 | News | `GET /public/news`, `/news/{slug}`, `/news/latest`, `/categories`, `/sitemap`, `/news-sitemap` | `GET/POST/PUT /admin/news`, `/publish`, `/unpublish`, `/archive`; `/admin/news-categories` |
 | Teams | `GET /public/teams`, `/teams/{slug}` | `GET/POST/PUT /admin/teams`, `/{id}/activate`, `/{id}/deactivate`, `DELETE /{id}` |
 | Players | `GET /public/players`, `/players/{slug}` | `GET/POST/PUT /admin/players`, `/{id}/activate`, `/{id}/deactivate` |
 | Series | `GET /public/tournaments`, `/{slug}`, `/{slug}/standings` | `GET/POST/PUT /admin/tournaments`, `/{id}/standings` (PUT = full replace) |
 | Fixtures | `GET /public/matches`, `/matches/{slug}` | `GET/POST/PUT /admin/matches`, `/{id}/show`, `/{id}/hide`, `DELETE /{id}` |
+
+## 5a. Page-level hand-off
+
+`docs/WEBSITE_INTEGRATION_BRIEF.md` is the copy-paste brief for the website session: run
+instructions, a page→endpoint table, response→UI mapping and known gaps. Give that file to the website
+chat; this document stays the authoritative contract.
 
 ## 6. What the website still has to do (its side of the contract)
 

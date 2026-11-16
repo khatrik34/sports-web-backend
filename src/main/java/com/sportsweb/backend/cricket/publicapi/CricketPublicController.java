@@ -1,8 +1,11 @@
 package com.sportsweb.backend.cricket.publicapi;
 
 import com.sportsweb.backend.common.web.PageResponse;
+import com.sportsweb.backend.cricket.dto.CommentaryResponse;
+import com.sportsweb.backend.cricket.dto.InningsResponse;
 import com.sportsweb.backend.cricket.dto.PublicMatch;
 import com.sportsweb.backend.cricket.dto.PublicPlayer;
+import com.sportsweb.backend.cricket.dto.PublicRankings;
 import com.sportsweb.backend.cricket.dto.PublicStandingRow;
 import com.sportsweb.backend.cricket.dto.PublicTeam;
 import com.sportsweb.backend.cricket.dto.PublicTournament;
@@ -79,6 +82,12 @@ public class CricketPublicController {
         return service.standings(slug);
     }
 
+    @GetMapping("/rankings")
+    @Operation(summary = "Points table of the current series, for the website's /rankings page")
+    public PublicRankings rankings(@RequestParam(required = false) String format) {
+        return service.rankings(format);
+    }
+
     @GetMapping("/matches")
     @Operation(summary = "Fixtures and results; filter mirrors the website's own filter values")
     public PageResponse<PublicMatch> matches(@RequestParam(defaultValue = "0") int page,
@@ -90,6 +99,20 @@ public class CricketPublicController {
                                              @RequestParam(required = false) String team,
                                              @RequestParam(required = false) String date) {
         return service.matches(filter, format, category, tournament, team, date, page, size);
+    }
+
+    @GetMapping("/matches/{slug}/scorecard")
+    @Operation(summary = "Innings, batting and bowling rows for a fixture")
+    public List<InningsResponse> scorecard(@PathVariable String slug) {
+        return service.scorecard(slug);
+    }
+
+    @GetMapping("/matches/{slug}/commentary")
+    @Operation(summary = "Ball-by-ball commentary, newest first")
+    public PageResponse<CommentaryResponse> commentary(@PathVariable String slug,
+                                                       @RequestParam(defaultValue = "0") int page,
+                                                       @RequestParam(defaultValue = "20") int size) {
+        return service.commentary(slug, page, size);
     }
 
     @GetMapping("/matches/{slug}")

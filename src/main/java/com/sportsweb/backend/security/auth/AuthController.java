@@ -1,6 +1,7 @@
 package com.sportsweb.backend.security.auth;
 
 import com.sportsweb.backend.security.auth.dto.AuthenticatedUserResponse;
+import com.sportsweb.backend.security.auth.dto.ChangePasswordRequest;
 import com.sportsweb.backend.security.auth.dto.LoginRequest;
 import com.sportsweb.backend.security.auth.dto.LogoutRequest;
 import com.sportsweb.backend.security.auth.dto.RefreshRequest;
@@ -45,6 +46,13 @@ public class AuthController {
     @Operation(summary = "Revoke the presented refresh token")
     public void logout(@Valid @RequestBody LogoutRequest request) {
         authService.logout(request);
+    }
+
+    @PostMapping("/password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Change your own password; every session is signed out and must sign in again")
+    public void changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        authService.changePassword(request);
     }
 
     @GetMapping("/me")

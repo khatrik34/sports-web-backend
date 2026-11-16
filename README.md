@@ -6,7 +6,7 @@ separate admin panel from one deployable.
 
 > **Status:** Phase 1 (foundation, authentication, RBAC, users/roles, audit trail, news
 > lifecycle, public read API, sitemaps, OpenAPI) is implemented on this branch and green in CI —
-> 53 integration tests against PostgreSQL 16. Public URLs match the shipped website
+> 71 integration tests against PostgreSQL 16. Public URLs match the shipped website
 > (`/news/{slug}`, `/news?filter=`) — see `docs/CONTRACTS.md`. `docs/PROGRESS.md` lists exactly what is
 > verified and what is still open; read it before treating anything as production-ready.
 
@@ -16,7 +16,9 @@ separate admin panel from one deployable.
 | --- | --- |
 | [`docs/AUDIT.md`](docs/AUDIT.md) | State of this repo and what could/could not be inspected; sandbox limitations |
 | [`docs/PLAN.md`](docs/PLAN.md) | Architecture, API conventions, security model, phase plan, assumptions |
-| [`docs/CONTRACTS.md`](docs/CONTRACTS.md) | Verified URLs of the live site, DTO↔UI mapping, sitemap feeds, open decisions |
+| [`docs/CONTRACTS.md`](docs/CONTRACTS.md) | Verified URLs of the live site, DTO↔UI mapping, endpoint summary, decisions |
+| [`docs/WEBSITE_INTEGRATION_BRIEF.md`](docs/WEBSITE_INTEGRATION_BRIEF.md) | Hand-off brief for wiring the public site to the API |
+| [`docs/ADMIN_PANEL_BRIEF.md`](docs/ADMIN_PANEL_BRIEF.md) | Hand-off brief for building the admin panel |
 | [`docs/PROGRESS.md`](docs/PROGRESS.md) | Per-item status, verification results, blockers, next steps |
 
 ## Requirements
@@ -109,6 +111,8 @@ lockout, audit entries for failed sign-in and publishing, slug conflicts, passwo
 | --- | --- | --- |
 | Auth | `POST /api/v1/auth/login` · `POST /api/v1/auth/refresh` · `POST /api/v1/auth/logout` | anonymous (possession of the refresh token is the credential) |
 | Auth | `GET /api/v1/auth/me` | any valid access token |
+| Public · videos | `GET /api/v1/public/videos` · `/videos/{slug}` | anonymous, **published only** |
+| Public · match detail | `GET /api/v1/public/matches/{slug}/scorecard` · `/commentary` · `/rankings?format=` · `/homepage` · `/redirects?path=` | anonymous |
 | Public · cricket | `GET /api/v1/public/teams` · `/teams/{slug}` · `/players` · `/players/{slug}` · `/tournaments` · `/tournaments/{slug}` · `/tournaments/{slug}/standings` · `/matches` · `/matches/{slug}` | anonymous, **active/hidden rules enforced** |
 | Public | `GET /api/v1/public/news` · `/news/latest` · `/news/{slug}` · `/categories` · `/sitemap` · `/news-sitemap?hours=48` | anonymous, **published only** |
 | Admin news | `GET/POST /api/v1/admin/news`, `GET/PUT /api/v1/admin/news/{id}`, `POST .../publish`, `.../unpublish`, `.../archive` | `news:read`, `news:write`, `news:publish` |

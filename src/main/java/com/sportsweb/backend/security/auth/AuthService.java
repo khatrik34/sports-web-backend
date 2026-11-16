@@ -9,6 +9,7 @@ import com.sportsweb.backend.common.error.ApiException;
 import com.sportsweb.backend.security.CurrentUserProvider;
 import com.sportsweb.backend.security.JwtTokenService;
 import com.sportsweb.backend.security.auth.dto.AuthenticatedUserResponse;
+import com.sportsweb.backend.security.auth.dto.ChangePasswordRequest;
 import com.sportsweb.backend.security.auth.dto.LoginRequest;
 import com.sportsweb.backend.security.auth.dto.LogoutRequest;
 import com.sportsweb.backend.security.auth.dto.RefreshRequest;
@@ -19,6 +20,7 @@ import com.sportsweb.backend.security.token.RefreshTokenService.RefreshTokenSnap
 import com.sportsweb.backend.security.user.Authorities;
 import com.sportsweb.backend.security.user.UserAccount;
 import com.sportsweb.backend.security.user.UserAccountRepository;
+import com.sportsweb.backend.security.password.PasswordPolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -150,6 +152,36 @@ public class AuthService {
             auditService.record(AuditAction.AUTH_LOGOUT, "auth", token.tokenId().toString(),
                     "Refresh token revoked on logout", null, null);
         });
+    }
+
+    /**
+     * Changing your own password requires the old one, revokes every refresh token (all sessions
+     * sign in again) and clears the {@code mustChangePassword} flag.
+     */
+    @Transactional
+    public void changePassword(ChangePasswordRequest request) {
+        UUID userId = currentUserProvider.requireUserId();
+        UserAccount user = userRepository.findById(userId)
+                .orElseThrow(() -> ApiException.unauthorized("unauthenticated", "Sign in again."));
+
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
+            auditService.recordSecurityEvent(AuditAction.USER_PASSWORD_CHANGED, AuditOutcome.FAILURE,
+                    user.getEmail(), user.getId(), "Password change rejected: current password incorrect");
+            throw ApiException.badRequest("current_password_incorrect", "The current password is not correct.");
+        }
+        PasswordPolicy.enforce(request.newPassword());
+        if (passwordEncoder.matches(request.newPassword(), user.getPasswordHash())) {
+            throw ApiException.badRequest("password_reused", "The new password must differ from the current one.");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        user.setPasswordChangedAt(Instant.now());
+        user.setMustChangePassword(false);
+        userRepository.save(user);
+        int revoked = refreshTokenService.revokeAllForUser(userId, "PASSWORD_CHANGED");
+
+        auditService.recordSecurityEvent(AuditAction.USER_PASSWORD_CHANGED, AuditOutcome.SUCCESS,
+                user.getEmail(), user.getId(), "Password changed by the account owner; sessions revoked: " + revoked);
     }
 
     @Transactional(readOnly = true)
