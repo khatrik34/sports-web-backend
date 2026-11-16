@@ -25,7 +25,7 @@ Read from `app/[...slug]/page.tsx`, `app/sitemap.ts`, `app/news-sitemap.xml/rout
 | `/news/trending` | — | ⏳ needs view/engagement data (Phase 2); the site currently reuses the same list |
 | `/sitemap.xml` | `GET /api/v1/public/sitemap` (article entries) | ✅ served |
 | `/news-sitemap.xml` | `GET /api/v1/public/news-sitemap?hours=48` | ✅ served |
-| `/search?q=` | `GET /api/v1/public/news?q=` (news only) | ⏳ cross-section search needs teams/players/etc. (Phase 3) |
+| `/search?q=` | `GET /api/v1/public/search?q=&limit=` — news, fixtures, series, teams, players, videos in one response | ✅ served |
 | `/teams`, `/teams/{slug}` | `GET /api/v1/public/teams`, `/teams/{slug}` | ✅ served |
 | `/players/{slug}` | `GET /api/v1/public/players/{slug}` (+ `?team=`) | ✅ served |
 | `/cricket/fixtures`, `/cricket/live-scores` | `GET /api/v1/public/matches?filter=…` | ✅ served |
@@ -146,6 +146,7 @@ Filter vocabulary is identical to the site's own: `?filter=live|upcoming|recent`
 | SEO | `GET /public/redirects?path=` | `/admin/redirects` (`seo:read` / `seo:write`) |
 | Media | — (assets referenced by URL) | `/admin/media` (`media:read` / `media:write`), metadata only |
 | Auth | `POST /auth/login`, `/refresh`, `/logout` | `POST /auth/password` (self-service), `GET /auth/me` |
+| Search | `GET /public/search?q=&limit=` (max 10 per section) | — |
 | --- | --- | --- |
 | News | `GET /public/news`, `/news/{slug}`, `/news/latest`, `/categories`, `/sitemap`, `/news-sitemap` | `GET/POST/PUT /admin/news`, `/publish`, `/unpublish`, `/archive`; `/admin/news-categories` |
 | Teams | `GET /public/teams`, `/teams/{slug}` | `GET/POST/PUT /admin/teams`, `/{id}/activate`, `/{id}/deactivate`, `DELETE /{id}` |
@@ -158,6 +159,13 @@ Filter vocabulary is identical to the site's own: `?filter=live|upcoming|recent`
 `docs/WEBSITE_INTEGRATION_BRIEF.md` is the copy-paste brief for the website session: run
 instructions, a page→endpoint table, response→UI mapping and known gaps. Give that file to the website
 chat; this document stays the authoritative contract.
+
+### Forced password change
+
+An access token issued while `mustChangePassword` is true carries `must_change_password`. Every
+business endpoint then answers `403` with `code: "password_change_required"` until
+`POST /api/v1/auth/password` succeeds (that call revokes all sessions; the next sign-in carries a clean
+token). Only `/api/v1/auth/**` and health endpoints stay reachable.
 
 ## 6. What the website still has to do (its side of the contract)
 

@@ -26,7 +26,8 @@ public class JwtTokenService {
         this.properties = properties;
     }
 
-    public IssuedAccessToken issue(UUID userId, String email, Collection<String> authorities) {
+    public IssuedAccessToken issue(UUID userId, String email, Collection<String> authorities,
+                                   boolean mustChangePassword) {
         Instant issuedAt = Instant.now();
         Instant expiresAt = issuedAt.plus(properties.getAccessTokenTtl());
 
@@ -37,6 +38,8 @@ public class JwtTokenService {
                 .subject(userId.toString())
                 .claim("email", email)
                 .claim("authorities", List.copyOf(authorities))
+                // Lets the API refuse business calls until the forced password change is done.
+                .claim("must_change_password", mustChangePassword)
                 .id(UUID.randomUUID().toString())
                 .build();
 

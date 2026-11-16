@@ -120,15 +120,28 @@ contract of its own to preserve. Waiting only on decisions D1/D2. Work that can 
 - Change-password endpoint (unblocks enforcing `mustChangePassword`).
 - Optional: contract snapshot of `/v3/api-docs` as a CI check.
 
-## Phase 3 — Teams, players, tournaments, fixtures, scores, commentary, points tables — OPEN
+## Phase 4 — Search, security gates, hardening — CI-VERIFIED
 
-Designed in `docs/PLAN.md`; nothing implemented. No external/live cricket data will be
-consumed or claimed — sports data is admin-entered.
+| id | Item | Status | Evidence / limitation |
+| --- | --- | --- | --- |
+| 4.1 | Cross-section search `GET /public/search?q=&limit=` | CI-VERIFIED | One call returns news, fixtures, series, teams, players and videos; each section keeps its own visibility rules (drafts, deactivated teams, hidden fixtures/videos never surface); fewer than 2 characters → `400 query_too_short` |
+| 4.2 | `mustChangePassword` enforced as a request gate | CI-VERIFIED | The flag travels in the access token; a filter refuses every business call with `403 password_change_required` until the password is changed. Only `/api/v1/auth/**` and health stay reachable |
+| 4.3 | Per-IP sign-in limiting | CI-VERIFIED | In-memory sliding window (`app.security.login.ip-max-attempts`, default 30 per 10 min) on top of the per-account lockout; answers `429 too_many_attempts`. **Single instance only** — multi-instance needs Redis |
+| 4.4 | Scheduled publishing | BY DESIGN | No job needed: public visibility is a time predicate (`published_at <= now`), so a future-dated article appears by itself |
+| 4.5 | Post-change session hygiene | CI-VERIFIED | Changing a password revokes every refresh token and the next sign-in carries no gate claim |
 
-## Phase 4 — Videos, homepage configuration, hardening — OPEN
+### Still open (not started — do not claim them)
 
-Per-IP login throttling, JWT key rotation (`kid`), optional 2FA for `SUPER_ADMIN`,
-audit retention/export, media storage, homepage blocks, videos.
+- Binary media uploads (S3/R2 presigned) and image variants; the API stores metadata only.
+- News revisions/autosave history, tags and related articles.
+- JWT key rotation with `kid`; optional 2FA for SUPER_ADMIN; dependency scanning in CI.
+- Distributed rate limiting (Redis) for multi-instance deployments.
+- Load/pen tests, and a docker image build in CI (the CI runner has no working Docker; the suite runs
+  against a service PostgreSQL instead).
+
+Suite size at last green run: **77 tests, 0 failures** (12 cricket · 11 videos/match detail · 9 auth ·
+9 public news · 7 news admin · 6 SEO/homepage/media · 6 RBAC · 5 password policy · 3 audit ·
+3 OpenAPI · 3 search/forced-change · 3 rate limiting).
 
 ## Blockers
 
@@ -151,11 +164,8 @@ audit retention/export, media storage, homepage blocks, videos.
 
 ## Next actions (in order)
 
-1. Phase 3: scorecards (innings + batting/bowling rows), ball-by-ball commentary, videos,
-   then media library, redirects/SEO tooling, change-password, and a checked-in OpenAPI snapshot.
-2. Admin panel UI scaffolded against these contracts (the `sports-web-admin-panel` repo is empty).
-3. Frontend integration: the website's `services/index.ts` adapters — **this needs a session on the
-   `sports-web` repository**; this session can only change `sports-web-backend`.
-3. Phase 3 sports data model (teams/players/tournaments/fixtures/scores/commentary/points).
-4. Harden: per-IP throttling, refresh-token family table cleanup job tuning, JWT `kid`
-   rotation, 2FA for super admins, dependency scanning in CI.
+1. Merge this branch; both clients can then build against a complete v1 contract.
+2. Client work, in their own sessions: `sports-web-admin-panel` (see `docs/ADMIN_PANEL_BRIEF.md`) and
+   `sports-web` (see `docs/WEBSITE_INTEGRATION_BRIEF.md`).
+3. Remaining backend backlog, only if you want it: binary media uploads + image variants, news
+   revisions/tags, JWT `kid` rotation, 2FA, Redis-backed rate limiting, load tests.
