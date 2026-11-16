@@ -130,6 +130,28 @@ skeleton instead of erroring on the first slow response.
 | OOM kill on a 512 MB instance | raise `-XX:MaxRAMPercentage` is wrong direction — lower it to 65 and keep `UseSerialGC` |
 | First request of the day takes ~1 minute | free instance cold start (Path A only), expected |
 
+## Demo content (optional)
+
+An empty database means empty public pages. For a demo, load the ready-made dataset:
+
+```bash
+# docker compose (Path B): add to .env, then restart the app container
+APP_FLYWAY_LOCATIONS=classpath:db/migration,classpath:db/demo
+docker compose up -d --build
+
+# Render (Path A): same value as an environment variable
+SPRING_FLYWAY_LOCATIONS=classpath:db/migration,classpath:db/demo
+```
+
+It arrives as the repeatable Flyway migration `R__demo_data` from `db/demo` and contains: 4 international teams, 12 players,
+Asia Cup 2026 with a points table, three fixtures (one `LIVE`, one `COMPLETED` with a full scorecard and
+commentary, one `SCHEDULED`), 5 published articles in 2 categories, 3 videos, 5 homepage sections and one
+legacy-URL redirect. Fixed UUIDs plus `ON CONFLICT DO NOTHING` mean it can never duplicate rows, and it
+creates **no user accounts** — the first admin still comes from `app.bootstrap`.
+
+To run later without the demo data, remove the extra location from the variable (Flyway records `R__demo_data` in `flyway_schema_history`; removing the folder afterwards is
+safe, the rows simply stay).
+
 ## What this repository does **not** do for you
 
 - It does not run a deployment: no CI image build yet (the CI runner has no Docker), so Render builds

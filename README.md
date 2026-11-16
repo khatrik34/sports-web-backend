@@ -33,6 +33,13 @@ separate admin panel from one deployable.
 always-free VM with `docker compose`), all environment variables, the health check and the first-admin
 bootstrap. `render.yaml` is a ready blueprint for the first one.
 
+## Demo content
+
+`src/main/resources/db/demo/R__demo_data.sql (repeatable, runs after the schema)` is an opt-in Flyway seed: 4 teams, 12 players, a series
+with fixtures, a full scorecard and commentary, 5 articles, 3 videos and a homepage layout. Enable it with
+`APP_FLYWAY_LOCATIONS=classpath:db/migration,classpath:db/demo` (compose) or
+`SPRING_FLYWAY_LOCATIONS=classpath:db/migration,classpath:db/demo` (hosted). It creates no accounts.
+
 ## Quick start (local)
 
 ```bash
