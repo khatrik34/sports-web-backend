@@ -1,0 +1,11 @@
+# "demo" profile: loads the opt-in sample dataset (src/main/resources/db/demo).
+#
+# Usage, together with whatever profile/credentials you already use:
+#   -Dspring.profiles.active=local,demo        (IntelliJ VM options)
+#   --spring.profiles.active=demo              (command line)
+#
+# The seed is repeatable and idempotent (fixed UUIDs + ON CONFLICT DO NOTHING), so enabling it on a
+# database that already has content cannot duplicate rows. Never enable it on a production database.
+spring:
+  flyway:
+    locations: classpath:db/migration,classpath:db/demo
