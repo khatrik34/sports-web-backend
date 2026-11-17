@@ -146,8 +146,12 @@ APP_BOOTSTRAP_ADMIN_PASSWORD=AdminPassw0rd!2026
 SPRING_FLYWAY_LOCATIONS=classpath:db/migration,classpath:db/demo
 ```
 
-- The last line loads the demo dataset (teams, fixtures, news, videos, homepage). Remove it if you want
-  an empty database; the schema is created either way.
+- The last line loads the demo dataset (8 teams, 24 players, 2 series, 8 fixtures, 12 articles, 6 videos,
+  6 homepage blocks). Remove it if you want an empty database; the schema is created either way. The
+  ready-made profile is shorter: put `-Dspring.profiles.active=local,demo` in *VM options* instead of
+  setting `SPRING_FLYWAY_LOCATIONS` by hand (`application-demo.yml` in the repo does the same thing).
+- On startup the log now states which database you are on, whether the demo seed is enabled, and whether
+  the bootstrap administrator is on — `Demo seed: DISABLED` is the usual reason a fresh install looks empty.
 - `APP_BOOTSTRAP_*` creates the first administrator **once**. Turn `APP_BOOTSTRAP_ENABLED` back to `false`
   after the first successful start.
 - The bootstrap password must satisfy the policy: 12+ characters with upper case, lower case, a digit and

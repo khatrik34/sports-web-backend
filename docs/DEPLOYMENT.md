@@ -135,6 +135,9 @@ skeleton instead of erroring on the first slow response.
 An empty database means empty public pages. For a demo, load the ready-made dataset:
 
 ```bash
+# anywhere: activate the ready-made profile (keeps db/demo on the Flyway path)
+SPRING_PROFILES_ACTIVE=demo
+
 # docker compose (Path B): add to .env, then restart the app container
 APP_FLYWAY_LOCATIONS=classpath:db/migration,classpath:db/demo
 docker compose up -d --build
