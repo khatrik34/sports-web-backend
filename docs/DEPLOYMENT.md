@@ -143,10 +143,10 @@ docker compose up -d --build
 SPRING_FLYWAY_LOCATIONS=classpath:db/migration,classpath:db/demo
 ```
 
-It arrives as the repeatable Flyway migration `R__demo_data` from `db/demo` and contains: 4 international teams, 12 players,
-Asia Cup 2026 with a points table, three fixtures (one `LIVE`, one `COMPLETED` with a full scorecard and
-commentary, one `SCHEDULED`), 5 published articles in 2 categories, 3 videos, 5 homepage sections and one
-legacy-URL redirect. Fixed UUIDs plus `ON CONFLICT DO NOTHING` mean it can never duplicate rows, and it
+It arrives as the repeatable Flyway migration `R__demo_data` from `db/demo` and contains: 8 international teams, 24 players, two
+series with points tables, eight fixtures (two `LIVE`, two `COMPLETED` with full scorecards and
+commentary, three `SCHEDULED`, one `ABANDONED`), 12 published articles in 2 categories (one deliberately
+`noindex`), 6 videos, 6 homepage sections and three legacy-URL redirects. Fixed UUIDs plus `ON CONFLICT DO NOTHING` mean it can never duplicate rows, and it
 creates **no user accounts** — the first admin still comes from `app.bootstrap`.
 
 To run later without the demo data, remove the extra location from the variable (Flyway records `R__demo_data` in `flyway_schema_history`; removing the folder afterwards is
