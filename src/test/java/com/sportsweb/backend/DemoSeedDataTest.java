@@ -3,10 +3,13 @@ package com.sportsweb.backend;
 import com.sportsweb.backend.support.AbstractIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 
 import javax.sql.DataSource;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -26,8 +29,15 @@ class DemoSeedDataTest extends AbstractIntegrationTest {
 
     @Test
     void demoScriptAppliesToTheRealSchemaAndLeavesNothingBehind() throws Exception {
-        String script = new String(new ClassPathResource("db/demo/R__demo_data.sql")
-                .getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        // Every db/demo file, in the same alphabetical order Flyway applies them.
+        Resource[] scripts = new PathMatchingResourcePatternResolver().getResources("classpath*:db/demo/*.sql");
+        Arrays.sort(scripts, Comparator.comparing(Resource::getFilename));
+        StringBuilder combined = new StringBuilder();
+        for (Resource resource : scripts) {
+            combined.append(new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8))
+                    .append('\n');
+        }
+        String script = combined.toString();
 
         try (Connection connection = dataSource.getConnection()) {
             connection.setAutoCommit(false);
@@ -37,9 +47,9 @@ class DemoSeedDataTest extends AbstractIntegrationTest {
                 }
 
                 assertThat(count(connection, "select count(*) from cricket_team where id::text like '11111111%'"))
-                        .isEqualTo(4);
+                        .isEqualTo(8);
                 assertThat(count(connection, "select count(*) from cricket_player where id::text like '22222222%'"))
-                        .isEqualTo(12);
+                        .isEqualTo(24);
                 assertThat(count(connection, "select count(*) from cricket_match where status = 'LIVE'"))
                         .isGreaterThanOrEqualTo(1);
                 assertThat(count(connection, "select count(*) from cricket_match where status = 'COMPLETED'"))
@@ -47,24 +57,27 @@ class DemoSeedDataTest extends AbstractIntegrationTest {
                 assertThat(count(connection, "select count(*) from cricket_match where status = 'SCHEDULED'"))
                         .isGreaterThanOrEqualTo(1);
                 assertThat(count(connection, "select count(*) from cricket_innings"))
-                        .isGreaterThanOrEqualTo(2);
-                assertThat(count(connection, "select count(*) from cricket_batting_entry"))
-                        .isGreaterThanOrEqualTo(10);
-                assertThat(count(connection, "select count(*) from cricket_bowling_entry"))
-                        .isGreaterThanOrEqualTo(8);
-                assertThat(count(connection, "select count(*) from cricket_commentary"))
-                        .isGreaterThanOrEqualTo(6);
-                assertThat(count(connection, "select count(*) from cricket_standing"))
                         .isGreaterThanOrEqualTo(4);
+                assertThat(count(connection, "select count(*) from cricket_batting_entry"))
+                        .isGreaterThanOrEqualTo(18);
+                assertThat(count(connection, "select count(*) from cricket_bowling_entry"))
+                        .isGreaterThanOrEqualTo(14);
+                assertThat(count(connection, "select count(*) from cricket_commentary"))
+                        .isGreaterThanOrEqualTo(12);
+                assertThat(count(connection, "select count(*) from cricket_standing"))
+                        .isGreaterThanOrEqualTo(7);
                 assertThat(count(connection, "select count(*) from news_article where status = 'PUBLISHED'"))
-                        .isGreaterThanOrEqualTo(5);
+                        .isGreaterThanOrEqualTo(12);
                 assertThat(count(connection, "select count(*) from news_category where id::text like '99999999%'"))
                         .isEqualTo(2);
                 assertThat(count(connection, "select count(*) from video where id::text like 'bbbbbbbb%'"))
-                        .isEqualTo(3);
+                        .isEqualTo(6);
                 assertThat(count(connection, "select count(*) from homepage_section"))
-                        .isGreaterThanOrEqualTo(5);
-                assertThat(count(connection, "select count(*) from seo_redirect where from_path = '/cricket/live'"))
+                        .isGreaterThanOrEqualTo(6);
+                assertThat(count(connection, "select count(*) from seo_redirect"))
+                        .isGreaterThanOrEqualTo(3);
+                // exactly one seeded article asks not to be indexed
+                assertThat(count(connection, "select count(*) from news_article where robots like '%noindex%'"))
                         .isEqualTo(1);
 
                 // the live fixture must be linkable through the public contract
