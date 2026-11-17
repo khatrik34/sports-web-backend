@@ -44,14 +44,14 @@ class PublicSitemapAndFixtureContractTest extends AbstractIntegrationTest {
     private List<String> sitemapUrls() throws Exception {
         JsonNode body = getJson("/api/v1/public/sitemap", null);
         List<String> urls = new ArrayList<>();
-        body.forEach(entry -> urls.add(entry.get("url").asText()));
+        body.forEach(entry -> urls.add(entry.get("loc").asText()));
         return urls;
     }
 
     private List<String> newsSitemapUrls() throws Exception {
         JsonNode body = getJson("/api/v1/public/news-sitemap", null);
         List<String> urls = new ArrayList<>();
-        body.forEach(entry -> urls.add(entry.get("url").asText()));
+        body.forEach(entry -> urls.add(entry.get("loc").asText()));
         return urls;
     }
 
