@@ -22,6 +22,17 @@ public final class NewsSpecifications {
                 cb.lessThanOrEqualTo(root.get("publishedAt"), now));
     }
 
+    /**
+     * Search-engine indexability. A {@code robots} value containing {@code noindex} keeps the article
+     * publicly readable but must be kept out of the sitemap feeds, otherwise the site asks crawlers to
+     * index pages it explicitly told them not to index.
+     */
+    public static Specification<NewsArticle> indexable() {
+        return (root, query, cb) -> cb.or(
+                cb.isNull(root.get("robots")),
+                cb.notLike(cb.lower(root.get("robots")), "%noindex%"));
+    }
+
     public static Specification<NewsArticle> inCategory(String categorySlug) {
         return (root, query, cb) -> cb.equal(root.get("category").get("slug"), categorySlug);
     }

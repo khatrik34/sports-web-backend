@@ -101,7 +101,9 @@ public class NewsPublicService {
     @Transactional(readOnly = true)
     public List<SitemapEntryResponse> sitemap() {
         Instant now = Instant.now();
-        return articleRepository.findAllByStatusAndPublishedAtLessThanEqualOrderByPublishedAtDesc(NewsStatus.PUBLISHED, now)
+        Specification<NewsArticle> specification = NewsSpecifications.publiclyVisible(now)
+                .and(NewsSpecifications.indexable());
+        return articleRepository.findAll(specification, Sort.by(Sort.Direction.DESC, "publishedAt"))
                 .stream()
                 .map(article -> new SitemapEntryResponse(
                         urlBuilder.absoluteUrl(urlBuilder.path(article)),
@@ -121,6 +123,7 @@ public class NewsPublicService {
         Instant now = Instant.now();
         Instant since = now.minus(Duration.ofHours(safeHours));
         Specification<NewsArticle> specification = NewsSpecifications.publiclyVisible(now)
+                .and(NewsSpecifications.indexable())
                 .and((root, query, cb) -> cb.greaterThanOrEqualTo(root.get("publishedAt"), since));
         return articleRepository.findAll(specification, Sort.by(Sort.Direction.DESC, "publishedAt"))
                 .stream()

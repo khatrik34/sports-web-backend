@@ -152,13 +152,33 @@ Filter vocabulary is identical to the site's own: `?filter=live|upcoming|recent`
 | Teams | `GET /public/teams`, `/teams/{slug}` | `GET/POST/PUT /admin/teams`, `/{id}/activate`, `/{id}/deactivate`, `DELETE /{id}` |
 | Players | `GET /public/players`, `/players/{slug}` | `GET/POST/PUT /admin/players`, `/{id}/activate`, `/{id}/deactivate` |
 | Series | `GET /public/tournaments`, `/{slug}`, `/{slug}/standings` | `GET/POST/PUT /admin/tournaments`, `/{id}/standings` (PUT = full replace) |
-| Fixtures | `GET /public/matches`, `/matches/{slug}` | `GET/POST/PUT /admin/matches`, `/{id}/show`, `/{id}/hide`, `DELETE /{id}` |
+| Fixtures | `GET /public/matches` (`filter`, `format`, `category`, `tournament`, `team`, `date`, `from`, `to`, paging), `/matches/{slug}` | `GET/POST/PUT /admin/matches`, `/{id}/show`, `/{id}/hide`, `DELETE /{id}` |
 
 ## 5a. Page-level hand-off
 
 `docs/WEBSITE_INTEGRATION_BRIEF.md` is the copy-paste brief for the website session: run
 instructions, a page→endpoint table, response→UI mapping and known gaps. Give that file to the website
 chat; this document stays the authoritative contract.
+
+### Sitemaps and robots
+
+`GET /public/sitemap` and `GET /public/news-sitemap` return published, past-dated, **indexable** articles.
+An article whose `robots` contains `noindex` is excluded from both feeds but remains readable at
+`GET /public/news/{slug}` with `seo.robots` intact. Drafts, archived and future-dated articles are absent
+from the feeds and return 404 from the detail endpoint.
+
+### Canonical path contract
+
+`path` in every news payload (and every sitemap URL) is the article's stored `canonicalPath` when set,
+otherwise the derived `/news/{slug}`. It is never rewritten by the API. A custom canonical path outside
+`/news/…` must be served by the website or covered by a `301` row in `seo_redirect`; the API exposes
+`GET /public/redirects?path=` for that resolution.
+
+### Fixture date filtering
+
+`date` selects one UTC day (existing behaviour). `from`/`to` are an additive, backward-compatible pair of
+UTC days where both bounds are inclusive (`to` covers the whole day). Invalid order, mixing `date` with
+`from`/`to`, or a non-ISO value answer `400 invalid_date_range` / `400 invalid_date`.
 
 ### Forced password change
 
