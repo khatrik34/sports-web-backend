@@ -8,6 +8,8 @@ import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 
 import javax.sql.DataSource;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.sql.Connection;
@@ -94,6 +96,23 @@ class DemoSeedDataTest extends AbstractIntegrationTest {
                     + "where id = '11111111-1111-1111-1111-111111111101'::uuid"))
                     .as("rolled back seed must not persist")
                     .isZero();
+        }
+    }
+
+    /**
+     * scripts/demo-data.sql is the single file people paste into pgAdmin. It is generated from the two
+     * Flyway sources, so this guard fails if someone edits a source and forgets to rebuild it.
+     */
+    @Test
+    void theSinglePasteScriptStaysInSyncWithTheSeedSources() throws Exception {
+        String combined = Files.readString(Path.of("scripts", "demo-data.sql"));
+        Resource[] scripts = new PathMatchingResourcePatternResolver().getResources("classpath*:db/demo/*.sql");
+        assertThat(scripts).isNotEmpty();
+        for (Resource resource : scripts) {
+            String source = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            assertThat(combined)
+                    .as("scripts/demo-data.sql must contain all of %s", resource.getFilename())
+                    .contains(source.trim());
         }
     }
 
