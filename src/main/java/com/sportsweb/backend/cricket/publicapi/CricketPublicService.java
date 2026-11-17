@@ -201,7 +201,8 @@ public class CricketPublicService {
      */
     @Transactional(readOnly = true)
     public PageResponse<PublicMatch> matches(String filter, String format, String category, String tournament,
-                                             String team, String date, int page, int size) {
+                                             String team, String date, String rangeFrom, String rangeTo,
+                                             int page, int size) {
         String phase = null;
         String categoryFilter = category;
         if (filter != null && !filter.isBlank()) {
@@ -233,11 +234,43 @@ public class CricketPublicService {
             specification = specification.and(MatchSpecifications.startingBetween(from, from.plus(Duration.ofDays(1))));
         }
 
+        boolean hasRange = (rangeFrom != null && !rangeFrom.isBlank()) || (rangeTo != null && !rangeTo.isBlank());
+        if (hasRange) {
+            if (date != null && !date.isBlank()) {
+                throw ApiException.badRequest("invalid_date_range", "Use either date or from/to, not both.");
+            }
+            LocalDate fromDay = Texts.blankToNull(rangeFrom) == null ? null : parseDay(rangeFrom.trim(), "from");
+            LocalDate toDay = Texts.blankToNull(rangeTo) == null ? null : parseDay(rangeTo.trim(), "to");
+            if (fromDay == null && toDay == null) {
+                throw ApiException.badRequest("invalid_date_range", "from and to must be ISO dates (yyyy-MM-dd).");
+            }
+            if (fromDay != null && toDay != null && toDay.isBefore(fromDay)) {
+                throw ApiException.badRequest("invalid_date_range", "from must not be after to.");
+            }
+            if (fromDay != null) {
+                Instant start = fromDay.atStartOfDay(ZoneOffset.UTC).toInstant();
+                specification = specification.and(MatchSpecifications.startingFrom(start));
+            }
+            if (toDay != null) {
+                // The upper bound is the start of the following day, i.e. "to" is inclusive as a day.
+                Instant end = toDay.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+                specification = specification.and(MatchSpecifications.startingBefore(end));
+            }
+        }
+
         Sort sort = "live".equals(phase) || "upcoming".equals(phase)
                 ? Sort.by(Sort.Direction.ASC, "startTime")
                 : Sort.by(Sort.Direction.DESC, "startTime");
         Page<Match> result = matchRepository.findAll(specification, Pageables.of(page, size, sort));
         return PageResponse.from(result, mapper::toPublicMatch);
+    }
+
+    private LocalDate parseDay(String value, String field) {
+        try {
+            return LocalDate.parse(value);
+        } catch (DateTimeParseException ex) {
+            throw ApiException.badRequest("invalid_date", field + " must use the ISO format yyyy-MM-dd.");
+        }
     }
 
     @Transactional(readOnly = true)

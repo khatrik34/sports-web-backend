@@ -97,8 +97,10 @@ public class CricketPublicController {
                                              @RequestParam(required = false) String category,
                                              @RequestParam(required = false) String tournament,
                                              @RequestParam(required = false) String team,
-                                             @RequestParam(required = false) String date) {
-        return service.matches(filter, format, category, tournament, team, date, page, size);
+                                             @RequestParam(required = false) String date,
+                                             @RequestParam(required = false) String from,
+                                             @RequestParam(required = false) String to) {
+        return service.matches(filter, format, category, tournament, team, date, from, to, page, size);
     }
 
     @GetMapping("/matches/{slug}/scorecard")

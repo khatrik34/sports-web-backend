@@ -52,6 +52,14 @@ public final class MatchSpecifications {
     }
 
     /** Free text over both team names, the series name and the venue, for the search endpoint. */
+    public static Specification<Match> startingFrom(Instant from) {
+        return (root, query, cb) -> cb.greaterThanOrEqualTo(root.get("startTime"), from);
+    }
+
+    public static Specification<Match> startingBefore(Instant to) {
+        return (root, query, cb) -> cb.lessThan(root.get("startTime"), to);
+    }
+
     public static Specification<Match> matchingText(String text) {
         String pattern = "%" + text.trim().toLowerCase(Locale.ROOT) + "%";
         return (root, query, cb) -> cb.or(

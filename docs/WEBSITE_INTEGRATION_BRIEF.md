@@ -25,7 +25,7 @@ must not hardcode the host in client code (`API_BASE_URL` env, server-side only)
 | `/teams` | `GET /api/v1/public/teams?size=100` |
 | `/teams/{slug}` | `GET /public/teams/{slug}`, `GET /public/players?team={slug}`, `GET /public/matches?team={slug}` |
 | `/players/{slug}` | `GET /api/v1/public/players/{slug}` |
-| `/cricket/live-scores`, `/cricket/fixtures` | `GET /public/matches?filter={all|live|upcoming|recent|international|domestic|league}&team=&tournament=&date=&size=20` |
+| `/cricket/live-scores`, `/cricket/fixtures` | `GET /public/matches?filter={all|live|upcoming|recent|international|domestic|league}&team=&tournament=&date=&from=&to=&size=20` (see the fixture filter rules below) |
 | `/cricket/match/{slug}` | `GET /public/matches/{slug}`; tab `scorecard` → `GET /public/matches/{slug}/scorecard`; tab `live-commentary` → `GET /public/matches/{slug}/commentary?size=20`; tab `points-table` → `GET /public/tournaments/{tournamentSlug}/standings` |
 | `/cricket/series` | `GET /api/v1/public/tournaments` |
 | `/cricket/series/{slug}` | `GET /public/tournaments/{slug}`, `GET /public/tournaments/{slug}/standings`, `GET /public/matches?tournament={slug}` |
